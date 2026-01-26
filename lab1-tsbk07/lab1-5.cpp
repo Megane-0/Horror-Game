@@ -32,54 +32,15 @@ GLfloat vertices[] = {
 	-0.5f,0.0f,0.5f,
 	-0.5f,0.0f,-0.5f,
 
-	0.5f,0.0f,0.5f,
-	-0.5f,0.0f,0.5f,
-	0.5f,0.0f,-0.5f,
+	
+	-0.5f, 0.0f,  0.5f, // Needs to be CCW
+	0.5f, 0.0f,  0.5f,
+	0.5f, 0.0f, -0.5f,
 
-	-0.5f,0.0f,-0.5f,
-	-0.5f,0.0f,0.5f,
-	0.5f,0.0f,-0.5f
-};
 
-GLfloat verticesFront[] =
-{
-	0.0f,0.5f,0.0f,
-	-0.5f,0.0f,0.5f,
-	0.5f,0.0f,0.5f
-};
-
-GLfloat verticesBack[] =
-{
-	0.0f,0.5f,0.0f,
-	-0.5f,0.0f,-0.5f,
-	0.5f,0.0f,-0.5f
-};
-
-GLfloat verticesRight[] =
-{
-	0.0f,0.5f,0.0f,
-	0.5f,0.0f,0.5f,
-	0.5f,0.0f,-0.5f
-};
-
-GLfloat verticesLeft[] =
-{
-	0.0f,0.5f,0.0f,
-	-0.5f,0.0f,0.5f,
-	-0.5f,0.0f,-0.5f
-};
-
-GLfloat verticesBottom1[] =
-{
-	0.5f,0.0f,0.5f,
-	-0.5f,0.0f,0.5f,
-	0.5f,0.0f,-0.5f
-};
-GLfloat verticesBottom2[] =
-{
-	-0.5f,0.0f,-0.5f,
-	-0.5f,0.0f,0.5f,
-	0.5f,0.0f,-0.5f
+	-0.5f, 0.0f,  0.5f, // Needs to be CCW
+	0.5f, 0.0f, -0.5f,
+	-0.5f, 0.0f, -0.5f
 };
 
 GLfloat color[] = {
@@ -110,8 +71,6 @@ GLfloat color[] = {
 1.0f,0.0f,0.5f,
 1.0f,0.0f,0.5f,
 1.0f,0.0f,0.5f
-
-
 };
 
 
@@ -125,17 +84,24 @@ void init(void)
 {
 	// vertex buffer object, used for uploading the geometry
 	unsigned int vertexBufferObjID;
+	unsigned int colorBufferObjID;
 
 
 	dumpInfo();
+	
 
 	// GL inits
 	glClearColor(0.8,0.5,0.5,0);
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
+
+	glEnable(GL_CULL_FACE);
+	//glDisable(GL_CULL_FACE);
 	printError("GL icnits");
 
 	// Load and compile shader
 	shader = loadShaders("lab1-4.vert", "lab1-4.frag");
+	glUseProgram(shader); // activate shader
 	printError("init shader");
 	
 	// Upload geometry to the GPU:
@@ -148,11 +114,15 @@ void init(void)
 	
 	// VBO for vertex data
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObjID);
-	glBufferData(GL_ARRAY_BUFFER, 18*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 54*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 	glVertexAttribPointer(glGetAttribLocation(shader, "in_Position"), 3, GL_FLOAT, GL_FALSE, 0, 0); 
 	glEnableVertexAttribArray(glGetAttribLocation(shader, "in_Position"));
 
-	glBufferData(GL_ARRAY_BUFFER, 18*sizeof(GLfloat), color, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &colorBufferObjID);
+	glBindBuffer(GL_ARRAY_BUFFER, colorBufferObjID);
+
+	glBufferData(GL_ARRAY_BUFFER, 54*sizeof(GLfloat), color, GL_STATIC_DRAW);
 	glVertexAttribPointer(glGetAttribLocation(shader, "in_Color"), 3, GL_FLOAT, GL_FALSE, 0, 0); 
 	glEnableVertexAttribArray(glGetAttribLocation(shader, "in_Color"));
 	
@@ -172,17 +142,19 @@ void display(void)
 	printError("pre display");
 
 	// clear the screen
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	// Get Time
 	t = (GLfloat)glutGet(GLUT_ELAPSED_TIME);
 
-	GLfloat myMatrix[] = {  cos(t), -sin(t), 0.0f, 0.0f,
+	float angle = 0.001f * t;
 
-                        sin(t), cos(t), 0.0f, 0.0f,
-
-                        0.0f, 0.0f, 1.0f, 0.0f,
-
-                        0.0f, 0.0f, 0.0f, 1.0f };					
+	GLfloat myMatrix[] = {
+    1.0f, 0.0f,        0.0f,       0.0f,
+    0.0f, cos(angle), -sin(angle),  0.0f,
+    0.0f, sin(angle),  cos(angle),  0.0f,
+    0.0f, 0.0f,        0.0f,       1.0f
+	}; // Rotate around x-axis
+					
 
 
 
@@ -205,6 +177,7 @@ int main(int argc, char *argv[])
 {
 	glutInit(&argc, argv);
 	glutInitContextVersion(3, 2);
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // Call init displaymode early
 	glutInitWindowSize(600, 600);
 	glutCreateWindow ("white triangle example");
 	glutDisplayFunc(display); 

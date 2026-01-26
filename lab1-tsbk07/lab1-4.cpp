@@ -88,11 +88,11 @@ void display(void)
 	// Get Time
 	t = (GLfloat)glutGet(GLUT_ELAPSED_TIME);
 
-	GLfloat myMatrix[] = {  cos(t), -sin(t), 0.0f, 0.0f,
+	GLfloat myMatrix[] = {  cos(t),0.0f, sin(t), 0.0f,
 
-                        sin(t), cos(t), 0.0f, 0.0f,
+                        0.0f, 1.0f, 0.0f, 0.0f,
 
-                        0.0f, 0.0f, 1.0f, 0.0f,
+                        -sin(t), 0.0f, cos(t), 0.0f,
 
                         0.0f, 0.0f, 0.0f, 1.0f };					
 
