@@ -1,0 +1,32 @@
+Questions lab 1:
+
+1. Where is the origin placed in the on-screen coordinate system?
+    - in (0,0) the middle of the screen
+
+2. Which direction are the X and Y axes pointing in the on-screen coordinate system?
+    - positive x to the right, positive y to up.
+
+3. What is the purpose of the "in", "out" and "uniform" modifiers? Be more specific than saying “input” and “output”.
+    - uniform: a read-only modifiers for global variables like matrixes that should not be changed.
+    - in: for vertexes these are variables that can be different for different vertexes, for fragments its a value for a given vertexes in the previous stage.
+    - out: for vertexes output passes data to fragment shader. For fragments out represents the final value for that pixel.
+
+What is the output of the fragment shader?
+    - typically a pixel-value so a vector4 of (RGBA)
+
+What does the function glUniformMatrix4fv do?
+    - it sends matrixes to shaderprograms.
+
+What is the frame rate of the animation?
+    - With a repeating timer every 50ms the framerate is 20/second
+
+Did you need to do anything different when uploading the color data?
+    - No, it is the same as uploading vertex data
+
+The "in" and "out" modifiers are now used for something different. What?
+    - In and out are used to pass a color through the vertex shader to the fragment shader. This interpolates the color.
+
+
+
+
+
