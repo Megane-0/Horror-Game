@@ -26,7 +26,13 @@ Did you need to do anything different when uploading the color data?
 The "in" and "out" modifiers are now used for something different. What?
     - In and out are used to pass a color through the vertex shader to the fragment shader. This interpolates the color.
 
+What problems did you encounter while building the pyramid?
+    - By not having the correct order on the vericies in the triangles some of the triangles got culled because they were pointing in the wrong direciton.
 
+How do you change the facing of a polygon?
+    - By swapping the order of the verticies, default CCW, could also be changed with some calles in OpenGL.
+
+    
 
 
 
