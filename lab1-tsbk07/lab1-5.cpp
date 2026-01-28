@@ -33,12 +33,12 @@ GLfloat vertices[] = {
 	-0.5f,0.0f,-0.5f,
 
 	
-	-0.5f, 0.0f,  0.5f, // Needs to be CCW
+	-0.5f, 0.0f,  0.5f, 
 	0.5f, 0.0f,  0.5f,
 	0.5f, 0.0f, -0.5f,
 
 
-	-0.5f, 0.0f,  0.5f, // Needs to be CCW
+	-0.5f, 0.0f,  0.5f,
 	0.5f, 0.0f, -0.5f,
 	-0.5f, 0.0f, -0.5f
 };
@@ -92,10 +92,10 @@ void init(void)
 
 	// GL inits
 	glClearColor(0.8,0.5,0.5,0);
-	//glDisable(GL_DEPTH_TEST);
+	
 	glEnable(GL_DEPTH_TEST);
-
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
+	//glDisable(GL_DEPTH_TEST); // Disable z-buffer makes it "see-through"
 	//glDisable(GL_CULL_FACE);
 	printError("GL icnits");
 
