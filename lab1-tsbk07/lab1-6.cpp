@@ -103,7 +103,7 @@ void init(void)
 	// GL inits
 	glClearColor(0.8,0.5,0.5,0);
 	
-	//glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 	//glEnable(GL_CULL_FACE);
 	//glDisable(GL_DEPTH_TEST); // Disable z-buffer makes it "see-through"
 	glDisable(GL_CULL_FACE);
@@ -211,7 +211,7 @@ void display(void)
 
 
 	// Upload matrix
-	//glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, myMatrix);
+	glUniformMatrix4fv(glGetUniformLocation(program, "myMatrix"), 1, GL_TRUE, myMatrix);
 
 	
 
