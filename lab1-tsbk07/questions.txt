@@ -1,11 +1,11 @@
 Questions lab 1:
-
+1)
 1. Where is the origin placed in the on-screen coordinate system?
     - in (0,0) the middle of the screen
 
 2. Which direction are the X and Y axes pointing in the on-screen coordinate system?
     - positive x to the right, positive y to up.
-
+2)
 3. What is the purpose of the "in", "out" and "uniform" modifiers? Be more specific than saying “input” and “output”.
     - uniform: a read-only modifiers for global variables like matrixes that should not be changed.
     - in: for vertexes these are variables that can be different for different vertexes, for fragments its a value for a given vertexes in the previous stage.
@@ -16,23 +16,37 @@ What is the output of the fragment shader?
 
 What does the function glUniformMatrix4fv do?
     - it sends matrixes to shaderprograms.
-
+3)
 What is the frame rate of the animation?
     - With a repeating timer every 50ms the framerate is 20/second
 
+4)
 Did you need to do anything different when uploading the color data?
     - No, it is the same as uploading vertex data
 
 The "in" and "out" modifiers are now used for something different. What?
     - In and out are used to pass a color through the vertex shader to the fragment shader. This interpolates the color.
 
+5)
 What problems did you encounter while building the pyramid?
     - By not having the correct order on the vericies in the triangles some of the triangles got culled because they were pointing in the wrong direciton.
 
 How do you change the facing of a polygon?
     - By swapping the order of the verticies, default CCW, could also be changed with some calles in OpenGL.
 
-    
+6)
+Why do we need normal vectors for a model?
+    - Generally normal vectors are used in lighting/shading calculations. But we are just using them to create fake lightning by looking at their z-value.
+
+What did you do in your fragment shader?
+    - We interpolate the normal vector as a color.
+
+Should a normal vector always be perpendicular to a certain triangle? If not, why?
+    - No, the normals can be perpendicular either to a surface triangle or to a vertex in the triangle.
+
+Now we are using glBindBuffer and glBufferData again. They deal with buffers, but in what way?
+    - glBindBuffer choses which buffer object is affected
+    - glBufferData defines the size of the data and its contents on the GPU
 
 
 
