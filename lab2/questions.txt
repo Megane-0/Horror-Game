@@ -1,0 +1,29 @@
+1)
+What kind of procedural texture did you make?
+    - Interpolated pass thorugh fragment shader
+
+2)
+How are the textures coordinates mapped on the bunny? Can you see how they vary over the model?
+    - The texture coordinates are mapped from front to back. The xy coordinates of the model directly correspond to the st coordinates.
+How can you make a texture repeat multiple times over the bunny?
+    - you can map many parts of the model texture to the same st coordinates in the image.
+Why can't we just pass the texture object to the shader? There is a specific reason for this, a limited resource. What? (No, it is not that we must avoid re-uploading from CPU. The texture object is on the GPU!)
+    - We must access it via the shaders built in sampler instead. 
+
+3)
+Questions:
+
+How did you move the bunny to get it in view?
+    - We decreased its z-direction to place it within the camera frustrum
+
+4)
+Questions:
+Given a certain vector for v, is there some direction you can't look?
+    - you cant look att the direction which is the position of the camera.
+
+5)
+Questions:
+
+Did you implement your light calculations in the vertex or fragment shader? So, which kind of shading did you implement?
+
+Some geometry data must be vec4, others are just as well vec3's. Which ones, and why? How about vertices, light source, normal vectors...?
