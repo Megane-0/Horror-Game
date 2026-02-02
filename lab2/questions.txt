@@ -11,19 +11,20 @@ Why can't we just pass the texture object to the shader? There is a specific rea
     - We must access it via the shaders built in sampler instead. 
 
 3)
-Questions:
-
 How did you move the bunny to get it in view?
     - We decreased its z-direction to place it within the camera frustrum
 
 4)
-Questions:
 Given a certain vector for v, is there some direction you can't look?
     - you cant look att the direction which is the position of the camera.
 
 5)
-Questions:
-
 Did you implement your light calculations in the vertex or fragment shader? So, which kind of shading did you implement?
+- In the vertex shader, we did Gouraud shading.
 
 Some geometry data must be vec4, others are just as well vec3's. Which ones, and why? How about vertices, light source, normal vectors...?
+- Only vectors related to colour. Other vecors only need to be vec3, except when being multiplied with matrices
+
+6)
+Was the difference big? If not, why?
+    - The difference is not really big. We think this is because there is currently no specular component.
