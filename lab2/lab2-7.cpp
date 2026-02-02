@@ -11,6 +11,7 @@
 // uses framework Cocoa
 GLfloat t;
 Model *m = LoadModelData("bunnyplus.obj");
+Model *m = LoadModel("bunny.obj");
 GLuint myTex; 
 
 
@@ -67,7 +68,7 @@ void init(void)
 	printError("GL icnits");
 
 	// Load and compile shader
-	program = loadShaders("lab2-6.vert", "lab2-6.frag");
+	program = loadShaders("lab2-7.vert", "lab2-7.frag");
 	glUseProgram(program); // activate shader
 	printError("init shader");
 	
