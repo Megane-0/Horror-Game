@@ -7,8 +7,6 @@
 #include "LoadTGA.h"
 #include "VectorUtils4.h"
 
-// uses framework OpenGL
-// uses framework Cocoa
 GLfloat t;
 Model *bunny;
 Model *cube;
@@ -38,20 +36,24 @@ GLfloat projectionMatrix[] = {    2.0f*near/(right-left), 0.0f, (right+left)/(ri
 
 
 // Reference to shader
-GLuint program;
+GLuint shader;
 
 void init(void)
 {
 	dumpInfo();
+	printError("init shader");
+
 
 	bunny = LoadModel("bunnyplus.obj");
 	cube = LoadModel("cubeplus.obj");
 
 	// Load and compile shader
-	program = loadShaders("lab2-7.vert", "lab2-7.frag");
+	shader = loadShaders("lab2-7.vert", "lab2-7.frag");
+	
 	// GL inits
 	glClearColor(0.8,0.5,0.5,0);
 	
+	// Buffers
 	glEnable(GL_DEPTH_TEST);
 	//glEnable(GL_CULL_FACE);
 	//glDisable(GL_DEPTH_TEST); // Disable z-buffer makes it "see-through"
@@ -59,27 +61,20 @@ void init(void)
 	printError("GL icnits");
 
 	
-	//glUseProgram(program); // activate shader
-	printError("init shader");
-	
-	// Upload geometry to the GPU:
-	
-	// Load texture
 
+	// Load texture
 	LoadTGATextureSimple("maskros512.tga", &myTex);
 	glBindTexture(GL_TEXTURE_2D, myTex);
-	glUniform1i(glGetUniformLocation(program, "texUnit"), 0); // Texture unit 0
+	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0); // Texture unit 0
 	glActiveTexture(GL_TEXTURE0);
 
 
 	// Upload projection matrix
-	glUniformMatrix4fv(glGetUniformLocation(program, "projectionMatrix"), 1, GL_TRUE, projectionMatrix);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "projectionMatrix"), 1, GL_TRUE, projectionMatrix);
 
 	//Upload lookat matrix
 	mat4 lookAtMatrix = lookAtv(vec3(0, 0, 1), vec3(0, 0, 0), vec3(0, 1, 0));
-	glUniformMatrix4fv(glGetUniformLocation(program, "lookAtMatrix"), 1, GL_TRUE, lookAtMatrix.m);
-
-	
+	glUniformMatrix4fv(glGetUniformLocation(shader, "lookAtMatrix"), 1, GL_TRUE, lookAtMatrix.m);
 
 	glutRepeatingTimer(50);
 	
@@ -106,23 +101,22 @@ void display(void)
 	}; // Rotate around x-axis
 					
 
-	// Upload matrix
-	glUniformMatrix4fv(glGetUniformLocation(program, "myMatrix"), 1, GL_TRUE, myMatrix);
-
-    
-	DrawModel(bunny, program, "in_Position", "in_Normal", "in_Texture");
+	// Upload matrix and draw bunny
+	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, myMatrix);
+	DrawModel(bunny, shader, "in_Position", "in_Normal", "in_Texture");
 	
 	GLfloat myMatrix2[] = {
-    1.0f, 0.0f,        0.0f,       2.0f,
+    1.0f, 0.0f,        0.0f,       1.0f,
     0.0f, cos(angle), -sin(angle),  0.0f,
     0.0f, sin(angle),  cos(angle),  -3.0f,
     0.0f, 0.0f,        0.0f,       1.0f
-	}; // Rotate around x-axis
+	}; // Rotate around x-axis a bit to the side.
 					
 
-	// Upload matrix
-	glUniformMatrix4fv(glGetUniformLocation(program, "myMatrix"), 1, GL_TRUE, myMatrix2);
-		DrawModel(cube, program, "in_Position", "in_Normal", "in_Texture");
+	// Upload matrix and draw cube
+	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, myMatrix2);
+	
+	DrawModel(cube, shader, "in_Position", "in_Normal", "in_Texture");
 
 	printError("display");
 	
