@@ -10,8 +10,8 @@
 // uses framework OpenGL
 // uses framework Cocoa
 GLfloat t;
-Model *m = LoadModelData("bunnyplus.obj");
-Model *m = LoadModel("bunny.obj");
+Model *bunny;
+Model *cube;
 GLuint myTex; 
 
 
@@ -37,27 +37,18 @@ GLfloat projectionMatrix[] = {    2.0f*near/(right-left), 0.0f, (right+left)/(ri
                                             0.0f, 0.0f, -1.0f, 0.0f };
 
 
-// vertex array objects
-unsigned int bunnyVertexArrayObjID;
-
-unsigned int bunnyVertexBufferObjID;
-
-unsigned int bunnyIndexBufferObjID;
-
-unsigned int bunnyNormalBufferObjID;
-
-unsigned int bunnyTexCoordBufferObjID;
-
 // Reference to shader
 GLuint program;
 
 void init(void)
 {
-
-
 	dumpInfo();
-	
 
+	bunny = LoadModel("bunnyplus.obj");
+	cube = LoadModel("cubeplus.obj");
+
+	// Load and compile shader
+	program = loadShaders("lab2-7.vert", "lab2-7.frag");
 	// GL inits
 	glClearColor(0.8,0.5,0.5,0);
 	
@@ -67,73 +58,12 @@ void init(void)
 	glDisable(GL_CULL_FACE);
 	printError("GL icnits");
 
-	// Load and compile shader
-	program = loadShaders("lab2-7.vert", "lab2-7.frag");
-	glUseProgram(program); // activate shader
+	
+	//glUseProgram(program); // activate shader
 	printError("init shader");
 	
 	// Upload geometry to the GPU:
 	
-
-	glGenVertexArrays(1, &bunnyVertexArrayObjID);
-
-    glGenBuffers(1, &bunnyVertexBufferObjID);
-
-    glGenBuffers(1, &bunnyIndexBufferObjID);
-
-    glGenBuffers(1, &bunnyNormalBufferObjID);
-    
-
-    glBindVertexArray(bunnyVertexArrayObjID);
-
-
-
-    // VBO for vertex data
-
-    glBindBuffer(GL_ARRAY_BUFFER, bunnyVertexBufferObjID);
-
-    glBufferData(GL_ARRAY_BUFFER, m->numVertices*3*sizeof(GLfloat), m->vertexArray, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(glGetAttribLocation(program, "in_Position"), 3, GL_FLOAT, GL_FALSE, 0, 0); 
-
-    glEnableVertexAttribArray(glGetAttribLocation(program, "in_Position"));
-
-
-
-    // VBO for normal data
-
-    glBindBuffer(GL_ARRAY_BUFFER, bunnyNormalBufferObjID);
-
-    glBufferData(GL_ARRAY_BUFFER, m->numVertices*3*sizeof(GLfloat), m->normalArray, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(glGetAttribLocation(program, "in_Normal"), 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    glEnableVertexAttribArray(glGetAttribLocation(program, "in_Normal"));
-
-    
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bunnyIndexBufferObjID);
-
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m->numIndices*sizeof(GLuint), m->indexArray, GL_STATIC_DRAW);
-	// End of upload of geometry
-
-
-
-	// Upload texture coordinates
-
-	    glGenBuffers(1, &bunnyTexCoordBufferObjID);    
-
-
-    if (m->texCoordArray != NULL)
-
-    {
-        glBindBuffer(GL_ARRAY_BUFFER, bunnyTexCoordBufferObjID);
-        glBufferData(GL_ARRAY_BUFFER, m->numVertices*2*sizeof(GLfloat), m->texCoordArray, GL_STATIC_DRAW);
-        glVertexAttribPointer(glGetAttribLocation(program, "inTexCoord"), 2, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(glGetAttribLocation(program, "inTexCoord"));
-    }
-
-
 	// Load texture
 
 	LoadTGATextureSimple("maskros512.tga", &myTex);
@@ -151,7 +81,6 @@ void init(void)
 
 	
 
-	
 	glutRepeatingTimer(50);
 	
 	printError("init arrays");
@@ -177,18 +106,24 @@ void display(void)
 	}; // Rotate around x-axis
 					
 
-
-
 	// Upload matrix
 	glUniformMatrix4fv(glGetUniformLocation(program, "myMatrix"), 1, GL_TRUE, myMatrix);
 
-
+    
+	DrawModel(bunny, program, "in_Position", "in_Normal", "in_Texture");
 	
+	GLfloat myMatrix2[] = {
+    1.0f, 0.0f,        0.0f,       2.0f,
+    0.0f, cos(angle), -sin(angle),  0.0f,
+    0.0f, sin(angle),  cos(angle),  -3.0f,
+    0.0f, 0.0f,        0.0f,       1.0f
+	}; // Rotate around x-axis
+					
 
-	glBindVertexArray(bunnyVertexArrayObjID);    // Select VAO
+	// Upload matrix
+	glUniformMatrix4fv(glGetUniformLocation(program, "myMatrix"), 1, GL_TRUE, myMatrix2);
+		DrawModel(cube, program, "in_Position", "in_Normal", "in_Texture");
 
-    glDrawElements(GL_TRIANGLES, m->numIndices, GL_UNSIGNED_INT, 0L);
-	
 	printError("display");
 	
 	
