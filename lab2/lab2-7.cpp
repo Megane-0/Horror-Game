@@ -99,10 +99,28 @@ void display(void)
     0.0f, sin(angle),  cos(angle),  -3.0f,
     0.0f, 0.0f,        0.0f,       1.0f
 	}; // Rotate around x-axis
-					
 
-	// Upload matrix and draw bunny
+	// Upload matrix
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, myMatrix);
+
+	
+	GLfloat r[] = {
+    cos(angle), 0.0f, sin(angle), 0.0f,
+    0.0f, 1.0f, 0.0f,  0.0f,
+    -sin(angle), 0.0f,  cos(angle),  0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+	}; // Rotate around y-axis
+
+
+
+	mat4 cameraRotation = T(0, 0, 1)*Ry(angle)*T(0, 0, -1);
+
+
+	// Upload matrix
+	glUniformMatrix4fv(glGetUniformLocation(shader, "cameraRotation"), 1, GL_TRUE, cameraRotation.m);
+
+
+	// Draw bunny
 	DrawModel(bunny, shader, "in_Position", "in_Normal", "in_Texture");
 	
 	GLfloat myMatrix2[] = {
