@@ -84,6 +84,28 @@ vec3 vertices[] =
 	0, 1, 2, 1, 3, 2
 	};
 
+
+vec3 lightSourcesColorsArr[] = { vec3(1.0f, 0.0f, 0.0f), // Red light
+
+                                 vec3(0.0f, 1.0f, 0.0f), // Green light
+
+                                 vec3(0.0f, 0.0f, 1.0f), // Blue light
+
+                                 vec3(1.0f, 1.0f, 1.0f) }; // White light
+
+GLint isDirectional[] = {0,0,1,1};
+
+
+vec3 lightSourcesDirectionsPositions[] = { vec3(10.0f, 5.0f, 0.0f), // Red light, positional
+
+                                       vec3(0.0f, 5.0f, 10.0f), // Green light, positional
+
+                                       vec3(-1.0f, 0.0f, 0.0f), // Blue light along X
+
+                                       vec3(0.0f, 0.0f, -1.0f) }; // White light along Z
+
+GLfloat specularExponent[] = {100.0, 200.0, 60.0};
+
 // Reference to shader
 GLuint shader;
 
@@ -137,6 +159,14 @@ void init(void)
 	glUseProgram(shader);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "projectionMatrix"), 1, GL_TRUE, projectionMatrix);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "lookAtMatrix"), 1, GL_TRUE, lookAtMatrix.m);
+
+
+	glUniform3fv(glGetUniformLocation(shader, "lightSourcesDirPosArr"), 4, &lightSourcesDirectionsPositions[0].x);
+
+	glUniform3fv(glGetUniformLocation(shader, "lightSourcesColorArr"), 4, &lightSourcesColorsArr[0].x);
+
+	glUniform1iv(glGetUniformLocation(shader, "isDirectional"), 4, isDirectional);
+
 
 	glutRepeatingTimer(50);
 	
@@ -221,10 +251,11 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, startPos);
 	
 
-
+	glUniform1f(glGetUniformLocation(shader, "specularExponent"), specularExponent[0]);
 	// Draw ground
 	DrawModel(ground, shader, "in_Position", "in_Normal", "in_Texture");
-
+	
+	glUniform1f(glGetUniformLocation(shader, "specularExponent"), specularExponent[1]);
 	// Draw model
 	DrawModel(balcony, shader, "in_Position", "in_Normal", "in_Texture");
 	DrawModel(roof, shader, "in_Position", "in_Normal", "in_Texture");
@@ -232,6 +263,8 @@ void display(void)
 
 	mat4 placeDowns = T(20.0, 0, 20.0);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, placeDowns.m);
+	
+	glUniform1f(glGetUniformLocation(shader, "specularExponent"), specularExponent[2]);
 	DrawModel(teapot, shader, "in_Position", "in_Normal", "in_Texture");
 
 
