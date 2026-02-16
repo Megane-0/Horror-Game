@@ -13,17 +13,19 @@ Model *balcony;
 Model *walls;
 Model *roof;
 Model *bunny;
+Model *skybox;
 
 Model *ground;
 
 GLuint myTex; 
+GLuint skyboxTex;
 vec3 startCamera = vec3(0,0,30);
 
 mat4 cameraMovement = mat4(1.0);
 
 #define kGroundSize 100.0f
 
-#define cameraSpeed 0.1
+#define cameraSpeed 0.3
 
 // Projection matrix
 #define near 1.0
@@ -96,6 +98,7 @@ void init(void)
 	roof = LoadModel("windmill/windmill-roof.obj");
 	walls = LoadModel("windmill/windmill-walls2.obj");
 	bunny = LoadModel("new models/Godzilla/godzilla.obj");
+	skybox = LoadModel("skybox/labskyboxfull.obj");
 	// Load and compile shader
 	shader = loadShaders("lab3-3.vert", "lab3-3.frag");
 	
@@ -114,19 +117,15 @@ void init(void)
 	glUniformMatrix4fv(glGetUniformLocation(shader, "projectionMatrix"), 1, GL_TRUE, projectionMatrix);
 
 	// Upload lookat matrix
-	mat4 lookAtMatrix = lookAtv(startCamera, vec3(0, 7, 0), vec3(0, 1, 0));
+	mat4 lookAtMatrix = lookAtv(startCamera, vec3(1, 0, 0), vec3(0, 1, 0));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "lookAtMatrix"), 1, GL_TRUE, lookAtMatrix.m);
 
 	
 	ground = LoadDataToModel(vertices, vertex_normals, tex_coords, ground_colors, indices,4,6);	
 	
 	
-	// Load texture
 
-	LoadTGATextureSimple("../lab2/maskros512.tga", &myTex);
-	glBindTexture(GL_TEXTURE_2D, myTex);
-	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0); // Texture unit 0
-	glActiveTexture(GL_TEXTURE0);
+
 
 
 	glutRepeatingTimer(50);
@@ -167,19 +166,68 @@ void display(void)
 	}
 	if (glutKeyIsDown('e')) {
 		cameraMovement = cameraMovement*T(0, -cameraSpeed, 0);
+	} // TODO: MAKE IT ROTATE
+	
+	if (glutKeyIsDown('j')) {
+		cameraMovement = cameraMovement*Ry(cameraSpeed/6.0);//*T(-cameraMovement.m[3], -cameraMovement.m[7], -cameraMovement.m[11])*Ry(cameraSpeed/6.0)*T(cameraMovement.m[3], cameraMovement.m[7], cameraMovement.m[11]);
 	}
+	if (glutKeyIsDown('k')) {
+		cameraMovement = cameraMovement*Ry(-cameraSpeed/6.0);
+	}
+
+
+
+	mat4 skyboxInit = T(startCamera.x, startCamera.y, startCamera.z);
+	
+
+	// Upload matrix
+	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, skyboxInit.m);
+
+	
+	
+	// Upload skybox matrix with no movement
+	mat4 camNoTranslate = cameraMovement;
+	camNoTranslate.m[3] = 0;
+	camNoTranslate.m[7] = 0;
+	camNoTranslate.m[11] = 0;
+	glUniformMatrix4fv(glGetUniformLocation(shader, "cameraMovement"), 1, GL_TRUE, camNoTranslate.m);
+	
+
+
+	// Load texture for skybox
+	LoadTGATextureSimple("skybox/labSkyBoxFull.tga", &skyboxTex);
+	glBindTexture(GL_TEXTURE_2D, skyboxTex);
+	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0); // Texture unit 0
+	glActiveTexture(GL_TEXTURE0);
+
+	// Draw skybox
+	glDisable(GL_DEPTH_TEST);
+	DrawModel(skybox, shader, "in_Position", "in_Normal", "in_Texture");
+	glEnable(GL_DEPTH_TEST);
+
+	// Upload camera matrix
 	glUniformMatrix4fv(glGetUniformLocation(shader, "cameraMovement"), 1, GL_TRUE, cameraMovement.m);
-	/**/
-	GLfloat myMatrix[] = {
+
+
+
+	// Create generic matrix
+	GLfloat startPos[] = {
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f,  0.0f,
     0.0f, 0.0f,  1.0f,  0.0f,
     0.0f, 0.0f, 0.0f, 1.0f
-	}; // Rotate around y-axis
-	
+	};
 	// Upload matrix
-	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, myMatrix);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, startPos);
+	
+	// Load texture for not skybox
+	LoadTGATextureSimple("../lab2/maskros512.tga", &myTex);
+	glBindTexture(GL_TEXTURE_2D, myTex);
+	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0); // Texture unit 0
+	glActiveTexture(GL_TEXTURE0);
 
+
+	// Draw ground
 	DrawModel(ground, shader, "in_Position", "in_Normal", "in_Texture");
 
 	// Draw model
