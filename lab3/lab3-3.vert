@@ -13,6 +13,7 @@ in vec2 in_Texture;
 
 
 out vec3 exNormal;
+out vec2 outTexCoord;
 
 void main(void)
 {
@@ -21,4 +22,5 @@ void main(void)
 	gl_Position = projectionMatrix*cameraMovement*lookAtMatrix*myMatrix*vec4(in_Position, 1.0);
 
 	exNormal = in_Normal;
+	outTexCoord = in_Texture;
 }

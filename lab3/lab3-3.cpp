@@ -12,6 +12,7 @@ Model *blade;
 Model *balcony;
 Model *walls;
 Model *roof;
+Model *bunny;
 
 Model *ground;
 
@@ -94,7 +95,7 @@ void init(void)
 	balcony = LoadModel("windmill/windmill-balcony.obj");
 	roof = LoadModel("windmill/windmill-roof.obj");
 	walls = LoadModel("windmill/windmill-walls2.obj");
-
+	bunny = LoadModel("new models/Godzilla/godzilla.obj");
 	// Load and compile shader
 	shader = loadShaders("lab3-3.vert", "lab3-3.frag");
 	
@@ -117,7 +118,15 @@ void init(void)
 	glUniformMatrix4fv(glGetUniformLocation(shader, "lookAtMatrix"), 1, GL_TRUE, lookAtMatrix.m);
 
 	
-	ground = LoadDataToModel(vertices, vertex_normals,tex_coords, ground_colors, indices,4,6);
+	ground = LoadDataToModel(vertices, vertex_normals, tex_coords, ground_colors, indices,4,6);	
+	
+	
+	// Load texture
+
+	LoadTGATextureSimple("../lab2/maskros512.tga", &myTex);
+	glBindTexture(GL_TEXTURE_2D, myTex);
+	glUniform1i(glGetUniformLocation(shader, "texUnit"), 0); // Texture unit 0
+	glActiveTexture(GL_TEXTURE0);
 
 
 	glutRepeatingTimer(50);
@@ -153,44 +162,51 @@ void display(void)
 	if (glutKeyIsDown('s')) {
 		cameraMovement = cameraMovement*T(0, 0, -cameraSpeed);
 	}
+	if (glutKeyIsDown('q')) {
+		cameraMovement = cameraMovement*T(0, cameraSpeed, 0);
+	}
+	if (glutKeyIsDown('e')) {
+		cameraMovement = cameraMovement*T(0, -cameraSpeed, 0);
+	}
 	glUniformMatrix4fv(glGetUniformLocation(shader, "cameraMovement"), 1, GL_TRUE, cameraMovement.m);
-
-	//DrawModel(ground, shader, "in_Position", "in_Normal", "in_Texture");	
-
+	/**/
 	GLfloat myMatrix[] = {
-    cos(angle), 0.0f, sin(angle), 0.0f,
+    1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f,  0.0f,
-    -sin(angle), 0.0f,  cos(angle),  0.0f,
+    0.0f, 0.0f,  1.0f,  0.0f,
     0.0f, 0.0f, 0.0f, 1.0f
 	}; // Rotate around y-axis
-
+	
 	// Upload matrix
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, myMatrix);
 
-	
+	DrawModel(ground, shader, "in_Position", "in_Normal", "in_Texture");
 
 	// Draw model
 	DrawModel(balcony, shader, "in_Position", "in_Normal", "in_Texture");
 	DrawModel(roof, shader, "in_Position", "in_Normal", "in_Texture");
 	DrawModel(walls, shader, "in_Position", "in_Normal", "in_Texture");
 
+	mat4 placeDowns = T(5, 0, 0);
+	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, placeDowns.m);
+	DrawModel(bunny, shader, "in_Position", "in_Normal", "in_Texture");
 
 
-	mat4 placeDown = Ry(angle)*T(4.5, 9.2, 0.00421)*Rx(angle);
+	mat4 placeDown = T(4.5, 9.2, 0.00421)*Rx(angle);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, placeDown.m);
 	DrawModel(blade, shader, "in_Position", "in_Normal", "in_Texture");
 
 
-	mat4 placeUp = Ry(angle)*T(4.5, 9.2, 0.00421)*Rx(angle)*Rx(3.14);
+	mat4 placeUp = T(4.5, 9.2, 0.00421)*Rx(angle)*Rx(3.14);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, placeUp.m);
 	DrawModel(blade, shader, "in_Position", "in_Normal", "in_Texture");
 
 
-	mat4 placeRight = Ry(angle)*T(4.5, 9, 0.00421)*Rx(angle)*Rx(3.14/2);
+	mat4 placeRight = T(4.5, 9, 0.00421)*Rx(angle)*Rx(3.14/2);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, placeRight.m);
 	DrawModel(blade, shader, "in_Position", "in_Normal", "in_Texture");
 
-	mat4 placeLeft = Ry(angle)*T(4.5, 9, 0.00421)*Rx(angle)*Rx(-3.14/2);
+	mat4 placeLeft = T(4.5, 9, 0.00421)*Rx(angle)*Rx(-3.14/2);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "myMatrix"), 1, GL_TRUE, placeLeft.m);
 	DrawModel(blade, shader, "in_Position", "in_Normal", "in_Texture");
 
