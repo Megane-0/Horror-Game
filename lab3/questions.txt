@@ -9,3 +9,14 @@ What kind of control did you implement?
 - keyboard controls (wasd)
 Can you make this kind of control in some other way than manipulating a "look-at" matrix?
 - you can manipulate the world position matrix instead.
+
+3)
+How did you handle the camera matrix for the skybox?
+- We zeroed out the translation components when drawing the skybox
+
+How did you represent the objects? Is this a good way to manage a scene or would you do it differently for a "real" application?
+- We modified the model-to-world matrix for each drawn model. In a real application one would like to do it all once before display is called.
+
+What special considerations are needed when rendering a skybox?
+- Turn of z buffering and have the camera inside it. It should rotate with the camera but not translate.
+
