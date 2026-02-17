@@ -11,26 +11,33 @@ uniform bool isDirectional[4];
 in vec3 exNormal;
 in vec2 outTexCoord;
 in vec3 surf;
+
 out vec4 out_Color;
 
 
 void main(void)
 {
+	
 	const vec3 light = vec3(0.58, 0.58, 0.58);
-	float shade; 
-	shade = dot(normalize(exNormal), light);
-	shade = clamp(shade, 0, 1);
+	
+	float shade, diffuse, specular; 
+	
+	// Diffuse
+	
+	diffuse = dot(normalize(exNormal), light);
+	diffuse = max(0.0, diffuse); // No negative light
 
-
-	vec3 reflectedLightDirection = reflect(-lightSourcesDirPosArr[3], exNormal);
+	// Specular
+	vec3 reflectedLightDirection = reflect(-lightSourcesDirPosArr[3], normalize(exNormal));
+	
 	vec3 eyeDirection = normalize(-surf);
 
-	float specularStrength = 0.0;
-	if (dot(lightSourcesDirPosArr[3], exNormal) > 0.0){
-		specularStrength = dot(reflectedLightDirection, eyeDirection);
-		specularStrength = max(specularStrength, 0.01);
-		specularStrength = pow(specularStrength, specularExponent);
+	specular = dot(reflectedLightDirection, eyeDirection);
+	if (specular > 0.0){
+		specular = 1.0 * pow(specular, specularExponent);
 	}
+	specular = max(specular, 0.0);
+	shade = 0.8*diffuse + 0.8*specular;
 
-	out_Color = vec4(specularStrength*0.5 + 0.5);
+	out_Color = vec4(shade, shade, shade, 1.0);
 }
