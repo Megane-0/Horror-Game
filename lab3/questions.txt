@@ -20,3 +20,19 @@ How did you represent the objects? Is this a good way to manage a scene or would
 What special considerations are needed when rendering a skybox?
 - Turn of z buffering and have the camera inside it. It should rotate with the camera but not translate.
 
+4)
+Where is the camera in view coordinates?
+- its at (0,0,0)
+
+Why was blue facing the camera when visualizing the normal vectors?
+- Because of the the normal facing the camera is ~(0,0,1) which mapped to a color becomes blue.
+
+For light source 3, why did we get a white area in the distance for the specular light but not for the diffuse?
+- The specular light takes into account the viewing direction and far away it becomes almost parallell to the reflection direction and thus the dot(R,V) ~ 1 meaning strong light.
+- Diffuse light doesn't take into account the viewing direction and thus doesn't have this property.
+
+How do you generate a vector from the surface to the eye?
+- simply take -surfacepoint, since in viewspace eye is at (0,0,0), should probably normalize as well.
+
+Which vectors need renormalization in the fragment shader?
+- Vectors that are interpolated, such as normal and viewdirection but also lightdirection.
