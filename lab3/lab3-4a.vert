@@ -29,9 +29,4 @@ void main(void)
 
 	mat3 normalMatrix = transpose(inverse(mat3(modelView)));
 	exNormal = normalMatrix*in_Normal;
-	/*
-	gl_Position = projectionMatrix*cameraMovement*lookAtMatrix*myMatrix*vec4(in_Position, 1.0);
-	surf = in_Position; // for specular
-	exNormal = in_Normal;
-	outTexCoord = in_Texture;*/
 }

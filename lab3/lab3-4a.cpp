@@ -19,7 +19,7 @@ Model *ground;
 
 GLuint myTex; 
 GLuint skyboxTex;
-vec3 startCamera = vec3(0,0,30);
+vec3 startCamera = vec3(0,10,30);
 
 mat4 cameraMovement = mat4(1.0);
 
@@ -140,7 +140,7 @@ void init(void)
 	glDisable(GL_CULL_FACE);
 	printError("GL icnits");
 	
-	mat4 lookAtMatrix = lookAtv(startCamera, vec3(1, 0, 0), vec3(0, 1, 0));
+	mat4 lookAtMatrix = lookAtv(startCamera, vec3(1, 10, 0), vec3(0, 1, 0));
 
 	/* SKY BOX */
 	glUseProgram(skyboxShader); // Added 2022-03
@@ -190,29 +190,28 @@ void display(void)
 
 	/* CAMERA MOVEMENT */
 	if (glutKeyIsDown('a')) {
-		cameraMovement = cameraMovement*T(cameraSpeed, 0, 0);
+		cameraMovement = T(cameraSpeed, 0, 0)*cameraMovement;
 	}
 	if (glutKeyIsDown('d')) {
-		cameraMovement = cameraMovement*T(-cameraSpeed, 0, 0);
+		cameraMovement = T(-cameraSpeed, 0, 0)*cameraMovement;
 	}
 	if (glutKeyIsDown('w')) {
-		cameraMovement = cameraMovement*T(0, 0, cameraSpeed);
+		cameraMovement = T(0, 0, cameraSpeed)*cameraMovement;
 	}
 	if (glutKeyIsDown('s')) {
-		cameraMovement = cameraMovement*T(0, 0, -cameraSpeed);
+		cameraMovement = T(0, 0, -cameraSpeed)*cameraMovement;
 	}
 	if (glutKeyIsDown('q')) {
-		cameraMovement = cameraMovement*T(0, cameraSpeed, 0);
+		cameraMovement = T(0, cameraSpeed, 0)*cameraMovement;
 	}
 	if (glutKeyIsDown('e')) {
-		cameraMovement = cameraMovement*T(0, -cameraSpeed, 0);
-	} // TODO: MAKE IT ROTATE
-	
+		cameraMovement = T(0, -cameraSpeed, 0)*cameraMovement;
+	}
 	if (glutKeyIsDown('j')) {
-		cameraMovement = cameraMovement*Ry(cameraSpeed/6.0);//*T(-cameraMovement.m[3], -cameraMovement.m[7], -cameraMovement.m[11])*Ry(cameraSpeed/6.0)*T(cameraMovement.m[3], cameraMovement.m[7], cameraMovement.m[11]);
+		cameraMovement = Ry(cameraSpeed/6.0)*cameraMovement;
 	}
 	if (glutKeyIsDown('k')) {
-		cameraMovement = cameraMovement*Ry(-cameraSpeed/6.0);
+		cameraMovement = Ry(-cameraSpeed/6.0)*cameraMovement;
 	}
 
 	/*SKYBOX*/
@@ -225,9 +224,6 @@ void display(void)
 	camNoTranslate.m[11] = 0;
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "cameraMovement"), 1, GL_TRUE, camNoTranslate.m);
 	
-
-
-
 	// Draw skybox
 	glDisable(GL_DEPTH_TEST);
 	DrawModel(skybox, skyboxShader, "in_Position", "in_Normal", "in_Texture");

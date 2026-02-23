@@ -49,30 +49,5 @@ void main(void)
         totalLight += lightSourcesColorArr[i] * (0.5 * diff + 0.8 * spec);
     }
 	out_Color = vec4(totalLight, 1.0);
-	
-	
-	/*
-	const vec3 light = vec3(0.58, 0.58, 0.58);
-	
-	float shade, diffuse, specular; 
-	
-	// Diffuse
-	
-	diffuse = dot(normalize(exNormal), light);
-	diffuse = max(0.0, diffuse); // No negative light
 
-	// Specular
-	vec3 reflectedLightDirection = reflect(-lightSourcesDirPosArr[3], normalize(exNormal));
-	
-	vec3 eyeDirection = normalize(-surf);
-
-	specular = dot(reflectedLightDirection, eyeDirection);
-	if (specular > 0.0){
-		specular = 1.0 * pow(specular, specularExponent);
-	}
-	specular = max(specular, 0.0);
-	shade = 0.8*diffuse + 0.8*specular;
-
-	out_Color = vec4(shade, shade, shade, 1.0);
-	*/
 }
