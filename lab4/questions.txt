@@ -1,0 +1,13 @@
+Questions:
+
+1)
+What kind of data does the heightmap image data hold? How many different levels are possible?
+- It holds a grayscaled image. Assuming 8? bytes could have 256 different levels.
+
+The terrain is 4x4. How many polygons does it draw?
+- 18
+
+
+2)
+Did you need to extend your camera movement code? How?
+- we extended it by allowing it to rotate around x axis
