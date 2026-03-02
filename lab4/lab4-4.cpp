@@ -9,7 +9,6 @@
 #include "VectorUtils4.h"
 #include "LittleOBJLoader.h"
 #include "LoadTGA.h"
-#include <vector>
 
 
 #define cameraSpeed 0.3
@@ -92,7 +91,7 @@ Model* GenerateTerrain(TextureData *tex)
 			// Vertex array. You need to scale this properly
 
 			vertexArray[(x + z * tex->width)].x = x / 1.0;
-			vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 100.0; // 10.0 for fft-terrain
+			vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
 			vertexArray[(x + z * tex->width)].z = z / 1.0;
 
 			// Texture coordinates. You may want to scale them.
@@ -178,7 +177,7 @@ void init(void)
 	sphere = LoadModel("groundsphere.obj");
 	
 	// Load terrain data
-	LoadTGATextureData("44-terrain.tga", &ttex);
+	LoadTGATextureData("fft-terrain.tga", &ttex);
 	tm = GenerateTerrain(&ttex);
 	printError("init terrain");
 
@@ -191,28 +190,37 @@ float getLength(vec2 p1, vec2 p2){
 	return sqrt(pow(p3.x, 2) + pow(p3.y,2));
 	
 }
+// https://stackoverflow.com/questions/25385361/point-within-a-triangle-barycentric-co-ordinates
+float barycentricHeight(vec3 A, vec3 B, vec3 C, float x, float z)
+{
+    float det = (B.z - C.z)*(A.x - C.x) + (C.x - B.x)*(A.z - C.z);
 
+    float l1 = ((B.z - C.z)*(x - C.x) + (C.x - B.x)*(z - C.z)) / det;
+    float l2 = ((C.z - A.z)*(x - C.x) + (A.x - C.x)*(z - C.z)) / det;
+    float l3 = 1.0f - l1 - l2;
+
+    return l1*A.y + l2*B.y + l3*C.y;
+}
 float getHeight(float x, float z) {
 
 	
-	//printf("pos(x, z): %f %f\n", x, z);
+	/*
 	float ceil_z = ceil(z);
 	float floor_z = floor(z);
 
 	float ceil_x = ceil(x);
 	float floor_x = floor(x);
-	//printf("floor/ceil(x, z): %f %f\n", floor_x, ceil_x);
 
 	vec2 p1 = vec2(ceil_x, floor_z);
 	vec2 p2 = vec2(ceil_x, ceil_z);
 	vec2 p3 = vec2(floor_x, floor_z);
 	vec2 p4 = vec2(floor_x, ceil_z);
-
 	
+	//printf("pos(x, z): %f %f\n", x, z);
+	//printf("floor/ceil(x, z): %f %f\n", floor_x, ceil_x);
 	//printf("%d\n", ttex.width);
-	
-
 	//printf("%f\n", (p1.x + p1.y * ttex.width));
+	
 	vec3 p1_vert = vertexArray[(int)(p1.x + p1.y * ttex.width)];
 	vec3 p2_vert = vertexArray[(int)(p2.x + p2.y * ttex.width)];
 	vec3 p3_vert = vertexArray[(int)(p3.x + p3.y * ttex.width)];
@@ -242,15 +250,31 @@ float getHeight(float x, float z) {
 		i++;
 	}
 	vertices.erase(vertices.begin() + j); // beautiful
+	*/
+	int gridX = (int)floor(x);
+	int gridZ = (int)floor(z);
 
-	float avgY = 0;
-	for(vec3 vec: vertices){
-		avgY += vec.y;
+	int nextX = gridX + 1;
+	int nextZ = gridZ + 1;
+
+	vec3 p3 = vertexArray[gridX + gridZ * ttex.width]; // (x,z)
+	vec3 p4 = vertexArray[gridX + nextZ * ttex.width]; // (x,z+1)
+	vec3 p1 = vertexArray[nextX + gridZ * ttex.width]; // (x+1,z)
+	vec3 p2 = vertexArray[nextX + nextZ * ttex.width]; // (x+1,z+1)
+
+	float localX = x - gridX;
+	float localZ = z - gridZ;
+	
+	if (localX + localZ < 1.0f)
+	{
+		// top left (p3) triangle
+		return barycentricHeight(p3, p4, p1, x, z);
 	}
-	avgY /= 3;
-
-	return avgY;
-	//printf("%f %f %f\n", p1_vert.x, p1_vert.y, p1_vert.z);
+	else
+	{
+		// bottom right (p2) triangle
+		return barycentricHeight(p1, p4, p2, x, z);
+	}
 }
 
 void display(void)
