@@ -222,6 +222,7 @@ void mouse(int x, int y)
 	// Uncomment to see mouse coordinates:
 	// printf("%d %d\n", x, y);
 }
+
 int main(int argc, char **argv)
 {
 	glutInit(&argc, argv);
@@ -234,7 +235,7 @@ int main(int argc, char **argv)
 	glutRepeatingTimer(20);
 	
 	glutPassiveMotionFunc(mouse);
-
+	
 	glutMainLoop();
 	exit(0);
 }
