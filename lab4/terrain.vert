@@ -8,12 +8,15 @@ out vec3 exNormal;
 
 // NY
 uniform mat4 projMatrix;
-uniform mat4 mdlMatrix;
+uniform mat4 modelMatrix;
+uniform mat4 viewMatrix;
 
 void main(void)
 {
-	mat3 normalMatrix1 = transpose(inverse(mat3(mdlMatrix)));
+	mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
+	exNormal = normalMatrix * inNormal;
+	
 	texCoord = inTexCoord;
-	gl_Position = projMatrix * mdlMatrix * vec4(inPosition, 1.0);
-	exNormal = normalMatrix1*inNormal;
+	gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(inPosition, 1.0);
+	
 }
