@@ -202,55 +202,6 @@ float barycentricHeight(vec3 A, vec3 B, vec3 C, float x, float z)
     return l1*A.y + l2*B.y + l3*C.y;
 }
 float getHeight(float x, float z) {
-
-	
-	/*
-	float ceil_z = ceil(z);
-	float floor_z = floor(z);
-
-	float ceil_x = ceil(x);
-	float floor_x = floor(x);
-
-	vec2 p1 = vec2(ceil_x, floor_z);
-	vec2 p2 = vec2(ceil_x, ceil_z);
-	vec2 p3 = vec2(floor_x, floor_z);
-	vec2 p4 = vec2(floor_x, ceil_z);
-	
-	//printf("pos(x, z): %f %f\n", x, z);
-	//printf("floor/ceil(x, z): %f %f\n", floor_x, ceil_x);
-	//printf("%d\n", ttex.width);
-	//printf("%f\n", (p1.x + p1.y * ttex.width));
-	
-	vec3 p1_vert = vertexArray[(int)(p1.x + p1.y * ttex.width)];
-	vec3 p2_vert = vertexArray[(int)(p2.x + p2.y * ttex.width)];
-	vec3 p3_vert = vertexArray[(int)(p3.x + p3.y * ttex.width)];
-	vec3 p4_vert = vertexArray[(int)(p4.x + p4.y * ttex.width)];
-
-
-	vec2 p = vec2(x,z);
-	std::vector<vec3> vertices;
-
-	vertices.push_back(p1_vert);
-	vertices.push_back(p2_vert);
-	vertices.push_back(p3_vert);
-	vertices.push_back(p4_vert);
-
-	
-	vec3 furthest = p1_vert;
-	float furthestDist = 0;
-	int i = 0;
-	int j = 0;
-	for(vec3 vec: vertices){
-		float d = getLength(vec2(vec.x,vec.z),p);
-		if (d > furthestDist){
-			furthestDist = d;
-			furthest = vec;
-			j=i;
-		}
-		i++;
-	}
-	vertices.erase(vertices.begin() + j); // beautiful
-	*/
 	int gridX = (int)floor(x);
 	int gridZ = (int)floor(z);
 
@@ -315,12 +266,7 @@ void display(void)
 
 	glBindTexture(GL_TEXTURE_2D, tex1);		// Bind Our Texture tex1
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
-	
-	
-	
-	
 
-	
 	// Get movable object position
 	// Determine next position
 	// Translate and move the object

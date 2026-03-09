@@ -6,6 +6,7 @@ in vec2 inTexCoord;
 
 out vec2 texCoord;
 out vec3 exNormal;
+out vec3 pixelPos;
 
 // NY
 uniform mat4 projMatrix;
@@ -19,5 +20,6 @@ void main(void)
 	
 	texCoord = inTexCoord;
 	gl_Position = projMatrix * viewMatrix * modelMatrix * placeDowns *vec4(inPosition, 1.0);
+	pixelPos = inPosition;
 	
 }

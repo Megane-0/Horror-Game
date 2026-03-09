@@ -85,7 +85,7 @@ Model* GenerateTerrain(TextureData *tex)
 	vec2 *texCoordArray = (vec2 *)malloc(sizeof(GLfloat) * 2 * vertexCount);
 	GLuint *indexArray = (GLuint *) malloc(sizeof(GLuint) * triangleCount*3);
 	
-	printf("bpp %d\n", tex->bpp);
+	//printf("bpp %d\n", tex->bpp);
 	for (x = 0; x < tex->width; x++)
 		for (z = 0; z < tex->height; z++)
 		{
@@ -114,7 +114,7 @@ Model* GenerateTerrain(TextureData *tex)
 			normalArray[(x + z * tex->width)] = vNorm;
 
 
-			printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
+			//printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
 	}
 
 	
@@ -166,7 +166,7 @@ void init(void)
 	projectionMatrix = frustum(-0.1, 0.1, -0.1, 0.1, 0.2, 5000.0);
 
 	// Load and compile shader
-	program = loadShaders("terrain.vert", "terrain.frag");
+	program = loadShaders("terrain_old.vert", "terrain_old.frag");
 	glUseProgram(program);
 	printError("init shader");
 	
