@@ -1,0 +1,32 @@
+Questions:
+
+1)
+What kind of data does the heightmap image data hold? How many different levels are possible?
+- It holds a grayscaled image. Assuming 8? bytes could have 256 different levels.
+
+The terrain is 4x4. How many polygons does it draw?
+- 18
+
+
+2)
+Did you need to extend your camera movement code? How?
+- we extended it by allowing it to rotate around x axis
+
+3)
+Which method did you use to find the normal vector?
+- "the cross"
+
+4)
+How did you figure out what surface to use? 
+- We start with the object position, then look at the vertex array at the at position. Get the floor-coordinates and determine which triangle we are in.
+
+How did you calculate the height from the surface?
+- Using barycentric cordinates in order to interpolate between vertices
+
+5)
+What kind of multitexturing function did you implement?
+- A multitexturing that varies two textures over the value of a sine function in the x axis
+
+6)
+How did you identify the water surface?
+- We checked the y position of the fragment coordinate
