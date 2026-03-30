@@ -14,34 +14,19 @@
 #define cameraSpeed 0.3
 
 mat4 projectionMatrix;
-mat4 cameraMovement = mat4(1.0);
 vec3 objPos = vec3(0.0,0.0,0.0);
 vec3 camPos = vec3(0,5,0);
 float yaw = 0.0;
 float pitch = 0.0;
 
-void MoveCamera(){
-	/* CAMERA MOVEMENT 
-	if (glutKeyIsDown('a')) {
-		cameraMovement = T(cameraSpeed, 0, 0)*cameraMovement;
-	}
-	if (glutKeyIsDown('d')) {
-		cameraMovement = T(-cameraSpeed, 0, 0)*cameraMovement;
-	}
-	if (glutKeyIsDown('w')) {
-		cameraMovement = T(0, 0, cameraSpeed)*cameraMovement;
-	}
-	if (glutKeyIsDown('s')) {
-		cameraMovement = T(0, 0, -cameraSpeed)*cameraMovement;
-	}
-	if (glutKeyIsDown('q')) {
-		cameraMovement = T(0, cameraSpeed, 0)*cameraMovement;
-	}
-	if (glutKeyIsDown('e')) {
-		cameraMovement = T(0, -cameraSpeed, 0)*cameraMovement;
-	}
-*/
-}
+// vertex array object
+Model *m, *m2, *tm, *sphere;
+// Reference to shader program
+GLuint program;
+GLuint tex1, tex2;
+TextureData ttex; // terrain
+
+vec3 *vertexArray;
 
 unsigned int max(float a, float b) {
 
@@ -60,10 +45,6 @@ unsigned int min(float a, float b) {
 		return b;
 	}
 }
-
-
-vec3 *vertexArray;
-
 
 Model* GenerateTerrain(TextureData *tex)
 {
@@ -103,8 +84,6 @@ Model* GenerateTerrain(TextureData *tex)
 			vec3 vNorm = cross((vUp-vDown), (vRight-vLeft));
 
 			normalArray[(x + z * tex->width)] = vNorm;
-
-
 			//printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
 	}
 
@@ -138,13 +117,6 @@ Model* GenerateTerrain(TextureData *tex)
 	return model;
 }
 
-
-// vertex array object
-Model *m, *m2, *tm, *sphere;
-// Reference to shader program
-GLuint program;
-GLuint tex1, tex2;
-TextureData ttex; // terrain
 
 void init(void)
 {
@@ -205,6 +177,7 @@ float barycentricHeight(vec3 A, vec3 B, vec3 C, float x, float z)
 
     return l1*A.y + l2*B.y + l3*C.y;
 }
+
 float getHeight(float x, float z) {
 	int gridX = (int)floor(x);
 	int gridZ = (int)floor(z);
@@ -232,18 +205,7 @@ float getHeight(float x, float z) {
 	}
 }
 
-void display(void)
-{
-	MoveCamera();
-	// clear the screen
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-	mat4 total, modelToWorld, worldToView;
-	
-	printError("pre display");
-	
-	glUseProgram(program);
-	
+void HandleMovement(){
 	if (glutKeyIsDown('j')) yaw += 0.02;
 	if (glutKeyIsDown('l')) yaw -= 0.02;
 	if (glutKeyIsDown('i')) pitch += 0.02;
@@ -264,18 +226,31 @@ void display(void)
 	camPos.y = getHeight(camPos.x, camPos.z);
 
 	
-	worldToView = lookAt(
+	mat4 view = lookAt(
 		camPos.x, camPos.y, camPos.z,
 		camPos.x + forward.x,
 		camPos.y + forward.y,
 		camPos.z + forward.z,
 		0,1,0
 	);
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+
+}
+
+void display(void)
+{
+	// clear the screen
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	mat4 total, modelToWorld, worldToView;
+	
+	printError("pre display");
+	
+	glUseProgram(program);
+	
+	HandleMovement();
 
 	modelToWorld = IdentityMatrix();
-	
-	worldToView = cameraMovement * worldToView;
-	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, worldToView.m);
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
 	
 	objPos.x += 0.01;
@@ -303,9 +278,6 @@ void display(void)
 	glutSwapBuffers();
 }
 
-
-
-
 void mouse(int x, int y)
 {
 	// This function is included in case you want some hints about using passive mouse movement.
@@ -313,10 +285,12 @@ void mouse(int x, int y)
 	// printf("%d %d\n", x, y);
 }
 int onMouse;
+
 void mouseClick(int button, int state, int x, int y){
 	printf("%d %d\n", x, y);
 
 }
+
 int main(int argc, char **argv)
 {
 	glutInit(&argc, argv);
@@ -333,13 +307,3 @@ int main(int argc, char **argv)
 	glutMainLoop();
 	exit(0);
 }
-/*
-TODO: 
-1) Calculate what quad the point falls into.
-
-2) The quad is built from two triangles. Figure out which one to use.
-
-3) Calculate the height value. There are several ways to do it. You can interpolate over the surface, or you can use the plane equation, or use barycentric coordinates (line-triangle intersections). I recommend interpolation.
-
-Using this function, place objects on the surface. You may use anything, but the models "groundsphere.obj" and "octagon.obj" can be nice.
-*/
