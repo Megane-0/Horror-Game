@@ -4,6 +4,7 @@
 #include "VectorUtils4.h"
 #include "LittleOBJLoader.h"
 #include "LoadTGA.h"
+#include "Camera.h"
 
 
 #define cameraSpeed 0.3
@@ -26,6 +27,8 @@ GLuint tex1, tex2;
 TextureData ttex; // terrain
 bool ignoreWarp = false;
 vec3 *vertexArray;
+Camera camera;
+int mouseX = 300, mouseY = 300;
 
 unsigned int max(float a, float b) {
 
@@ -247,8 +250,15 @@ void display(void)
 	printError("pre display");
 	
 	glUseProgram(program);
-	
-	HandleMovement();
+	static float lastTime = 0;
+	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+	float deltaTime = currentTime - lastTime;
+	lastTime = currentTime;
+	//HandleMovement();
+	camera.update(deltaTime, mouseX, mouseY);
+
+	mat4 view = camera.getViewMatrix();
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
 
 	modelToWorld = IdentityMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
@@ -280,27 +290,8 @@ void display(void)
 
 void mouse(int x, int y)
 {
-    if (ignoreWarp)
-    {
-        ignoreWarp = false;
-        return;
-    }
-
-    int centerX = 300;
-    int centerY = 300;
-
-    int dx = x - centerX;
-    int dy = y - centerY;
-
-    yaw   += dx * sensitivity;
-    pitch -= dy * sensitivity;
-
-    // Clamp pitch
-    if (pitch > 1.5) pitch = 1.5;
-    if (pitch < -1.5) pitch = -1.5;
-
-    ignoreWarp = true;
-    glutWarpPointer(centerX, centerY);
+    mouseX = x;
+    mouseY = y;
 }
 int onMouse;
 

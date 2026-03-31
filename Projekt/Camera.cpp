@@ -1,6 +1,6 @@
 #include "Camera.h"
 #include "MicroGlut.h"
-
+// https://www.opengl-tutorial.org/beginners-tutorials/tutorial-6-keyboard-and-mouse/#the-actual-code
 // External terrain function
 extern float getHeight(float x, float z);
 
@@ -19,7 +19,7 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
     int centerX = 300;
     int centerY = 300;
 
-    // --- Mouse input (same as tutorial) ---
+    // Mouse input 
     horizontalAngle += mouseSpeed * deltaTime * (centerX - mouseX);
     verticalAngle   += mouseSpeed * deltaTime * (centerY - mouseY);
 
@@ -30,12 +30,13 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
     // Reset cursor
     glutWarpPointer(centerX, centerY);
 
-    // --- Direction ---
+    // Direction 
     vec3 direction = vec3(
         cos(verticalAngle) * sin(horizontalAngle),
         sin(verticalAngle),
         cos(verticalAngle) * cos(horizontalAngle)
     );
+    
 
     vec3 right = vec3(
         sin(horizontalAngle - 3.14f / 2.0f),
@@ -45,7 +46,7 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
 
     vec3 up = cross(right, direction);
 
-    // --- Movement ---
+    // Movement 
     if (glutKeyIsDown('w'))
         position = position + direction * (deltaTime * speed);
 
@@ -58,10 +59,10 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
     if (glutKeyIsDown('a'))
         position = position - right * (deltaTime * speed);
 
-    // --- Terrain constraint ---
+    // Terrain constraint
     position.y = getHeight(position.x, position.z);
 
-    // --- View matrix ---
+    // View matrix
     viewMatrix = lookAt(
         position.x, position.y, position.z,
         position.x + direction.x,
