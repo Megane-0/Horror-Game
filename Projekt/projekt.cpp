@@ -159,7 +159,6 @@ void init(void)
 	tm = GenerateTerrain(&ttex);
 	printError("init terrain");
 
-	printf("Note: The call to DrawModel will report warnings about inNormal not existing. This is because inNormal is not used in the shader yet so it is optimized away.\n");
 }
 
 float getLength(vec2 p1, vec2 p2){
@@ -207,45 +206,11 @@ float getHeight(float x, float z) {
 	}
 }
 
-void HandleMovement(){	
-	vec3 forward = vec3(
-		cos(pitch) * sin(yaw),
-		sin(pitch),
-		cos(pitch) * cos(yaw)
-	);
-	vec3 forwardXZ = normalize(vec3(
-		sin(yaw),
-		0,
-		cos(yaw)
-	));
-	vec3 right = normalize(cross(forwardXZ, vec3(0,1,0)));
-
-	if (glutKeyIsDown('w')) camPos += forwardXZ * cameraSpeed;
-	if (glutKeyIsDown('s')) camPos -= forwardXZ * cameraSpeed;
-
-	if (glutKeyIsDown('a')) camPos -= right * cameraSpeed;
-	if (glutKeyIsDown('d')) camPos += right * cameraSpeed;
-
-	camPos.y = getHeight(camPos.x, camPos.z);
-
-	
-	mat4 view = lookAt(
-		camPos.x, camPos.y, camPos.z,
-		camPos.x + forward.x,
-		camPos.y + forward.y,
-		camPos.z + forward.z,
-		0,1,0
-	);
-	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
-
-}
-
 void display(void)
 {
 	// clear the screen
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-	mat4 total, modelToWorld, worldToView;
+
 	
 	printError("pre display");
 	
@@ -254,13 +219,12 @@ void display(void)
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
 	float deltaTime = currentTime - lastTime;
 	lastTime = currentTime;
-	//HandleMovement();
 	camera.update(deltaTime, mouseX, mouseY);
 
 	mat4 view = camera.getViewMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
 
-	modelToWorld = IdentityMatrix();
+	mat4 modelToWorld = IdentityMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
 	
 	objPos.x += 0.01;
@@ -277,12 +241,6 @@ void display(void)
 
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
-	// Get movable object position
-	// Determine next position
-	// Translate and move the object
-	// Draw movable object
-
-
 	printError("display 2");
 	
 	glutSwapBuffers();
@@ -290,6 +248,10 @@ void display(void)
 
 void mouse(int x, int y)
 {
+	if (camera.ignoreMouse){
+		camera.ignoreMouse = false;
+		return;
+	}
     mouseX = x;
     mouseY = y;
 }

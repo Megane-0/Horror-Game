@@ -10,6 +10,7 @@ public:
 
     mat4 getViewMatrix() const;
     vec3 getPosition() const;
+    bool ignoreMouse = false;
 
 private:
     vec3 position;

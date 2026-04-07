@@ -1,6 +1,7 @@
 #include "Camera.h"
 #include "MicroGlut.h"
 // https://www.opengl-tutorial.org/beginners-tutorials/tutorial-6-keyboard-and-mouse/#the-actual-code
+
 // External terrain function
 extern float getHeight(float x, float z);
 
@@ -10,23 +11,26 @@ Camera::Camera()
     horizontalAngle = 3.14f;
     verticalAngle = 0.0f;
 
-    speed = 10.0f;
-    mouseSpeed = 0.002f;
+    speed = 5.0f;
+    mouseSpeed = 0.0002f;
 }
 
 void Camera::update(float deltaTime, int mouseX, int mouseY)
 {
     int centerX = 300;
     int centerY = 300;
-
+    
+    
+    
     // Mouse input 
-    horizontalAngle += mouseSpeed * deltaTime * (centerX - mouseX);
-    verticalAngle   += mouseSpeed * deltaTime * (centerY - mouseY);
+    horizontalAngle += mouseSpeed  * (centerX - mouseX); // * deltaTime
+    verticalAngle   += mouseSpeed  * (centerY - mouseY); // * deltaTime
 
     // Clamp pitch
     if (verticalAngle > 1.5f) verticalAngle = 1.5f;
     if (verticalAngle < -1.5f) verticalAngle = -1.5f;
 
+    ignoreMouse = true;
     // Reset cursor
     glutWarpPointer(centerX, centerY);
 
@@ -70,6 +74,7 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
         position.z + direction.z,
         up.x, up.y, up.z
     );
+    
 }
 
 mat4 Camera::getViewMatrix() const
