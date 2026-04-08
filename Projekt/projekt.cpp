@@ -30,6 +30,7 @@ vec3 *vertexArray;
 Camera camera;
 int mouseX = 300, mouseY = 300;
 
+
 unsigned int max(float a, float b) {
 
 	if (a >= b) {
@@ -47,7 +48,9 @@ unsigned int min(float a, float b) {
 		return b;
 	}
 }
-
+bool sphereCollision(vec3 p1, float r1, vec3 p2, float r2){
+	return false; // todo
+}
 Model* GenerateTerrain(TextureData *tex)
 {
 	int vertexCount = tex->width * tex->height;
@@ -229,8 +232,9 @@ void display(void)
 	
 	objPos.x += 0.01;
 	objPos.z += 0.02;
-
+	
 	objPos.y = getHeight(objPos.x, objPos.z);
+
 	mat4 placeDowns = T(objPos.x, objPos.y, objPos.z);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(sphere, program, "inPosition", "inNormal", "inTexCoord");

@@ -20,6 +20,8 @@ private:
 
     float speed;
     float mouseSpeed;
+    float cameraHeight;
+    float cameraRadius;
 
     mat4 viewMatrix;
 };

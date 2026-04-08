@@ -7,12 +7,14 @@ extern float getHeight(float x, float z);
 
 Camera::Camera()
 {
-    position = vec3(0, 5, 0);
+    position = vec3(0.5, 3, 0.7);
     horizontalAngle = 3.14f;
     verticalAngle = 0.0f;
 
     speed = 5.0f;
     mouseSpeed = 0.0002f;
+    cameraHeight = 1.8f;
+    cameraRadius = 0.5f;
 }
 
 void Camera::update(float deltaTime, int mouseX, int mouseY)
@@ -64,8 +66,10 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
         position = position - right * (deltaTime * speed);
 
     // Terrain constraint
-    position.y = getHeight(position.x, position.z);
+    float terrainHeight = getHeight(position.x, position.z);
 
+    if (position.y < terrainHeight + cameraHeight)
+        position.y = terrainHeight + cameraHeight;
     // View matrix
     viewMatrix = lookAt(
         position.x, position.y, position.z,
@@ -74,6 +78,10 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
         position.z + direction.z,
         up.x, up.y, up.z
     );
+    vec3 target = position + direction;
+
+    printf("Camera position: (%.2f, %.2f, %.2f)\n", position.x, position.y, position.z);
+    printf("Looking at: (%.2f, %.2f, %.2f)\n", target.x, target.y, target.z);
     
 }
 
