@@ -151,7 +151,7 @@ void init(void)
 
 
 	// sphere
-	sphere = LoadModel("groundsphere.obj");
+	sphere = LoadModel("house_v2.obj");
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
@@ -183,6 +183,15 @@ float barycentricHeight(vec3 A, vec3 B, vec3 C, float x, float z)
 }
 
 float getHeight(float x, float z) {
+	if (ttex.width < 2 || ttex.height < 2) {
+		return 0.0f;
+	}
+
+	if (x < 0.0f) x = 0.0f;
+	if (z < 0.0f) z = 0.0f;
+	if (x > ttex.width - 2) x = ttex.width - 2;
+	if (z > ttex.height - 2) z = ttex.height - 2;
+
 	int gridX = (int)floor(x);
 	int gridZ = (int)floor(z);
 
