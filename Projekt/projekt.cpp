@@ -15,10 +15,10 @@ vec3 camPos = vec3(0,5,0);
 bool firstMouse = true;
 
 // vertex array object
-Model *m, *m2, *tm, *sphere;
+Model *m, *m2, *tm, *sphere, *ghost;
 // Reference to shader program
 GLuint program;
-GLuint tex1, tex2;
+GLuint tex1, tex2, tex3;
 TextureData ttex; // terrain
 bool ignoreWarp = false;
 vec3 *vertexArray;
@@ -139,6 +139,7 @@ void init(void)
 
 	LoadTGATextureSimple("maskros512.tga", &tex1);
 	LoadTGATextureSimple("44-terrain.tga", &tex2);
+	//LoadTGATextureSimple("44-terrain.tga", &tex2);
 	
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex1);		// Bind Our Texture tex1
@@ -151,6 +152,9 @@ void init(void)
 
 	// sphere
 	sphere = LoadModel("groundsphere.obj");
+
+	// load ghost model
+	ghost = LoadModel("ghost.obj");
 	
 	// Load terrain data
 	LoadTGATextureData("fft-terrain.tga", &ttex);
@@ -234,12 +238,17 @@ void display(void)
 	mat4 placeDowns = T(objPos.x, objPos.y, objPos.z);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(sphere, program, "inPosition", "inNormal", "inTexCoord");
+
 	placeDowns = mat4(1.0);
-	
+	placeDowns = placeDowns*T(10, 10, 10);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+	
 
-
+	placeDowns = mat4(1.0);
+	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+
 
 	printError("display 2");
 	
