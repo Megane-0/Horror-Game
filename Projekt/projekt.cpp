@@ -23,7 +23,7 @@ TextureData ttex; // terrain
 bool ignoreWarp = false;
 vec3 *vertexArray;
 Camera camera;
-int mouseX = 300, mouseY = 300;
+int mouseX = 1024/2, mouseY = 768/2;
 
 
 unsigned int max(float a, float b) {
@@ -127,7 +127,7 @@ void init(void)
 	printError("GL inits");
 	glutHideCursor();
 	projectionMatrix = frustum(-0.1, 0.1, -0.1, 0.1, 0.2, 5000.0);
-	glutWarpPointer(300, 300);
+	glutWarpPointer(1024/2, 768/2);
 	// Load and compile shader
 	program = loadShaders("projekt.vert", "projekt.frag");
 	glUseProgram(program);
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitContextVersion(3, 2);
-	glutInitWindowSize (600, 600);
+	glutInitWindowSize (1024, 768);
 	glutCreateWindow ("TSBK07 Lab 4");
 	glutDisplayFunc(display);
 	init ();
