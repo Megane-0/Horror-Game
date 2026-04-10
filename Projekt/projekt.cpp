@@ -12,12 +12,7 @@
 mat4 projectionMatrix;
 vec3 objPos = vec3(0.0,0.0,0.0);
 vec3 camPos = vec3(0,5,0);
-float yaw = 0.0;
-float pitch = 0.0;
-int lastX = 300;
-int lastY = 300;
 bool firstMouse = true;
-float sensitivity = 0.002;
 
 // vertex array object
 Model *m, *m2, *tm, *sphere;
@@ -130,7 +125,7 @@ void init(void)
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	printError("GL inits");
-
+	glutHideCursor();
 	projectionMatrix = frustum(-0.1, 0.1, -0.1, 0.1, 0.2, 5000.0);
 	glutWarpPointer(300, 300);
 	// Load and compile shader
@@ -161,6 +156,7 @@ void init(void)
 	LoadTGATextureData("fft-terrain.tga", &ttex);
 	tm = GenerateTerrain(&ttex);
 	printError("init terrain");
+	camera.firstMouse = true;
 
 }
 
@@ -252,10 +248,7 @@ void display(void)
 
 void mouse(int x, int y)
 {
-	if (camera.ignoreMouse){
-		camera.ignoreMouse = false;
-		return;
-	}
+
     mouseX = x;
     mouseY = y;
 }

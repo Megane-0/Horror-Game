@@ -11,7 +11,13 @@ public:
     mat4 getViewMatrix() const;
     vec3 getPosition() const;
     bool ignoreMouse = false;
-
+    vec2 lastMouse;
+    bool firstMouse;
+    bool ignoreNextMouse = false;
+    const int CENTER_X = 300;
+    const int CENTER_Y = 300;
+    bool rWasDown = false;
+    const float sensitivity = 0.0025f;
 private:
     vec3 position;
 
