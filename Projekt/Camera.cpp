@@ -15,32 +15,18 @@ Camera::Camera()
     cameraHeight = 1.8f;
     cameraRadius = 0.5f;
 }
-
-void Camera::update(float deltaTime, int mouseX, int mouseY)
+void Camera::processMouse(float dx, float dy)
 {
-    // --- initialize first frame ---
-    if (firstMouse)
-    {
-        lastMouse.x = mouseX;
-        lastMouse.y = mouseY;
-        firstMouse = false;
-    }
-
-    // --- mouse delta ---
-    float dx = mouseX - lastMouse.x;
-    float dy = mouseY - lastMouse.y;
-
-    lastMouse.x = mouseX;
-    lastMouse.y = mouseY;
-
     horizontalAngle -= dx * sensitivity;
-    verticalAngle   -= dy * sensitivity;
+    verticalAngle   += dy * sensitivity;
 
-    // --- clamp pitch ---
     if (verticalAngle > 1.5f) verticalAngle = 1.5f;
     if (verticalAngle < -1.5f) verticalAngle = -1.5f;
+}
 
-    // --- direction vector ---
+void Camera::update(float deltaTime)
+{
+    // direction vector 
     vec3 direction = vec3(
         cos(verticalAngle) * sin(horizontalAngle),
         sin(verticalAngle),
@@ -55,7 +41,7 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
 
     vec3 up = cross(right, direction);
 
-    // --- movement ---
+    //  movement 
     float frameSpeed = speed * deltaTime;
 
     if (glutKeyIsDown('w'))
@@ -70,21 +56,12 @@ void Camera::update(float deltaTime, int mouseX, int mouseY)
     if (glutKeyIsDown('a'))
         position = position - right * frameSpeed;
     
-    bool rDown = glutKeyIsDown('r');
-
-    if (rDown && !rWasDown)
-    {
-        horizontalAngle += 3.1415926f;
-    }
-
-    rWasDown = rDown;
-    
-    // --- terrain constraint ---
+    // terrain constraint
     float terrainHeight = getHeight(position.x, position.z);
     if (position.y < terrainHeight + cameraHeight)
         position.y = terrainHeight + cameraHeight;
 
-    // --- view matrix ---
+    //  view matrix 
     vec3 target = position + direction;
 
     viewMatrix = lookAt(

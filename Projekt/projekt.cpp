@@ -12,7 +12,6 @@
 mat4 projectionMatrix;
 vec3 objPos = vec3(0.0,0.0,0.0);
 vec3 camPos = vec3(0,5,0);
-bool firstMouse = true;
 
 // vertex array object
 Model *m, *m2, *tm, *sphere, *ghost;
@@ -20,11 +19,9 @@ Model *m, *m2, *tm, *sphere, *ghost;
 GLuint program;
 GLuint tex1, tex2, tex3;
 TextureData ttex; // terrain
-bool ignoreWarp = false;
 vec3 *vertexArray;
 Camera camera;
-int mouseX = 1024/2, mouseY = 768/2;
-
+int CENTER_X = 1024/2, CENTER_Y = 768/2;
 
 unsigned int max(float a, float b) {
 
@@ -160,7 +157,6 @@ void init(void)
 	LoadTGATextureData("fft-terrain.tga", &ttex);
 	tm = GenerateTerrain(&ttex);
 	printError("init terrain");
-	camera.firstMouse = true;
 
 }
 
@@ -231,7 +227,7 @@ void display(void)
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
 	float deltaTime = currentTime - lastTime;
 	lastTime = currentTime;
-	camera.update(deltaTime, mouseX, mouseY);
+	camera.update(deltaTime);
 
 	mat4 view = camera.getViewMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
@@ -266,15 +262,17 @@ void display(void)
 
 void mouse(int x, int y)
 {
-
-    mouseX = x;
-    mouseY = y;
+	// calculate distance from center
+    float dx = x - CENTER_X;
+    float dy = CENTER_Y - y;
+	// update camera based on dx, dy
+	camera.processMouse(dx, dy);
+	// warp back to center position
+    glutWarpPointer(CENTER_X, CENTER_Y);
 }
-int onMouse;
 
 void mouseClick(int button, int state, int x, int y){
 	printf("%d %d\n", x, y);
-
 }
 
 int main(int argc, char **argv)
@@ -283,7 +281,9 @@ int main(int argc, char **argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitContextVersion(3, 2);
 	glutInitWindowSize (1024, 768);
+
 	glutCreateWindow ("TSBK07 Lab 4");
+	//glutFullScreen();
 	glutDisplayFunc(display);
 	init ();
 	glutRepeatingTimer(100);

@@ -6,24 +6,18 @@ class Camera {
 public:
     Camera();
 
-    void update(float deltaTime, int mouseX, int mouseY);
-
+    void update(float deltaTime);
+    void processMouse(float dx, float dy);
     mat4 getViewMatrix() const;
     vec3 getPosition() const;
-    bool ignoreMouse = false;
-    vec2 lastMouse;
-    bool firstMouse;
-    bool ignoreNextMouse = false;
-    const int CENTER_X = 1024/2;
-    const int CENTER_Y = 768/2;
-    bool rWasDown = false;
-    const float sensitivity = 0.0025f;
-private:
-    vec3 position;
 
+    const float sensitivity = 0.0025f;
+
+    
+private:
     float horizontalAngle;
     float verticalAngle;
-
+    vec3 position;
     float speed;
     float mouseSpeed;
     float cameraHeight;

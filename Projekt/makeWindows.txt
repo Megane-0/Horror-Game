@@ -1,0 +1,6 @@
+cd /c/Users/oskar/Desktop/Stuff/Courses/TSBK07/tsbk07/Projekt
+
+g++ -Wall -o projekt.exe -I../common -I../common/Windows \
+projekt.cpp Camera.cpp \
+../common/GL_utilities.c ../common/LoadTGA.c ../common/Windows/MicroGlut.c \
+-lopengl32 -lgdi32 -lglew32
