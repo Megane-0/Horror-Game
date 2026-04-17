@@ -149,7 +149,7 @@ void init(void)
 
 
 	// sphere
-	sphere = LoadModel("house_v2.obj");
+	sphere = LoadModel("house_4.obj");
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
