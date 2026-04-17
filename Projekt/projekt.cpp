@@ -5,6 +5,7 @@
 #include "LittleOBJLoader.h"
 #include "LoadTGA.h"
 #include "Camera.h"
+#include "GhostMovement.h"
 
 
 #define cameraSpeed 0.3
@@ -135,7 +136,7 @@ void init(void)
 
 
 	LoadTGATextureSimple("maskros512.tga", &tex1);
-	LoadTGATextureSimple("44-terrain.tga", &tex2);
+	LoadTGATextureSimple("ghost_texture.tga", &tex3);
 	//LoadTGATextureSimple("44-terrain.tga", &tex2);
 	
 	glActiveTexture(GL_TEXTURE0);
@@ -157,6 +158,18 @@ void init(void)
 	LoadTGATextureData("fft-terrain.tga", &ttex);
 	tm = GenerateTerrain(&ttex);
 	printError("init terrain");
+
+
+	// Set up ghost
+	std::vector<vec3> path = {
+        {10.0f, 10.0f, 0.0f},
+        {10.0f, 10.0f, 10.0f},
+        {5.0f, 10.0f, 5.0f}
+    };
+    
+    // Set up the ghost: Start Pos, Speed, Path
+    initGhost(vec3(10, 10, 10), 2.0f, path);
+    gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 }
 
@@ -244,10 +257,21 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(sphere, program, "inPosition", "inNormal", "inTexCoord");
 
-	placeDowns = mat4(1.0);
-	placeDowns = placeDowns*T(10, 10, 10);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+
+
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex3); // Temporarily set the ghost 
+
+	updateGhost(deltaTime); // Update the math
+
+    mat4 ghostMatrix = getGhostMoveMatrix();
+    
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
+    DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex1); // And now turn off ghost bind
 	
 
 	placeDowns = mat4(1.0);

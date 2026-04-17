@@ -19,11 +19,7 @@ void main(void)
 
 	
 	vec3 texColor = vec3(0, 0, 0);
-	if (pixelPos.y > 1) {
-		texColor = texture(tex1, texCoord).rgb;
-	} else {
-		texColor = vec3(0, 0, 1);
-	}
+	texColor = texture(tex1, texCoord).rgb;
 
 
 	
