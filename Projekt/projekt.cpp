@@ -158,7 +158,7 @@ void init(void)
 
 
 	// sphere
-	house = LoadModel("house_v4.obj");
+	house = LoadModel("house_v10.obj");
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
