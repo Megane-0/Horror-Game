@@ -10,8 +10,10 @@ public:
     void processMouse(float dx, float dy);
     mat4 getViewMatrix() const;
     vec3 getPosition() const;
+    void setPosition(vec3 _position);
 
     const float sensitivity = 0.0025f;
+    float cameraRadius;
 
     
 private:
@@ -21,7 +23,7 @@ private:
     float speed;
     float mouseSpeed;
     float cameraHeight;
-    float cameraRadius;
+    
 
     mat4 viewMatrix;
 };

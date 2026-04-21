@@ -41,6 +41,72 @@ unsigned int min(float a, float b) {
 		return b;
 	}
 }
+
+float length(vec3 v)
+{
+    return sqrt(dot(v, v));
+}
+
+// Gets the point on a line ab which is closest to p
+vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 p)
+{
+	// get line
+    vec3 ab = b - a;
+    float t = dot(p - a, ab) / dot(ab, ab);
+
+	// clamp
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+
+    return a + ab * t;
+}
+
+vec3 closestPointTriangle(vec3 p, vec3 a, vec3 b, vec3 c)
+{
+	// get edge vectors
+    vec3 ab = b - a;
+    vec3 ac = c - a;
+    vec3 bc = c - b;
+
+    vec3 ap = p - a;
+    vec3 bp = p - b;
+    vec3 cp = p - c;
+
+	// get normal
+    vec3 n = cross(ab, ac);
+
+    // same-side tests
+    vec3 n1 = cross(ab, ap);// edge AB
+    vec3 n2 = cross(bc, bp);// edge BC
+    vec3 ca = a - c;        // edge CA
+    vec3 n3 = cross(ca, cp);
+
+    if (dot(n, n1) >= 0.0f &&
+        dot(n, n2) >= 0.0f &&
+        dot(n, n3) >= 0.0f)
+    {
+        // inside face region -> project onto the plane
+        float denom = dot(n, n);
+        if (denom < 1e-8f) return a; // degenerate triangle, treat as vertex A
+        float dist = dot(p - a, n) / denom;
+        return p - n * dist;
+    }
+
+    // otherwise check the three edges
+    vec3 p1 = closestPointOnSegment(a, b, p);
+    vec3 p2 = closestPointOnSegment(b, c, p);
+    vec3 p3 = closestPointOnSegment(c, a, p);
+
+    float d1 = length(p - p1);
+    float d2 = length(p - p2);
+    float d3 = length(p - p3);
+
+	// compare distances
+    if (d1 <= d2 && d1 <= d3) return p1;
+    if (d2 <= d3) return p2;
+    return p3;
+}
+
 // Checks if two spheres p1,p2 with radius r1,r2 are colliding
 bool sphereCollision(vec3 p1, float r1, vec3 p2, float r2)
 {
@@ -52,6 +118,50 @@ bool sphereCollision(vec3 p1, float r1, vec3 p2, float r2)
     float r = r1 + r2;
 
     return distSq <= r*r;
+}
+
+// Checks for collision between camera and house model
+bool houseCollision(vec3 cam, float r, mat4 modelmatrix){
+	// checks collision with house
+	for (int i = 0; i < house->numIndices; i += 3)
+    {
+        int i0 = house->indexArray[i];
+        int i1 = house->indexArray[i+1];
+        int i2 = house->indexArray[i+2];
+
+        vec3 a = house->vertexArray[i0];
+        vec3 b = house->vertexArray[i1];
+        vec3 c = house->vertexArray[i2];
+		
+		// transform to world space
+		vec3 aWorld = MultVec3(modelmatrix, a);
+		vec3 bWorld = MultVec3(modelmatrix, b);
+		vec3 cWorld = MultVec3(modelmatrix, c);
+
+		vec3 normal = normalize(cross(bWorld -aWorld, cWorld - aWorld));
+		
+		// early rejection (distance)
+		if (length(cam - aWorld) > 10.0f) continue;
+		
+		// early rejection (face)
+		vec3 camToTri = cam - aWorld;
+		if (dot(normal, camToTri) < 0) continue;
+
+		// get closest point to triangle
+		vec3 q = closestPointTriangle(cam, aWorld, bWorld, cWorld);
+
+		// check distance to point and compare against radius
+        vec3 diff = cam - q;
+        float distSq = dot(diff, diff);
+
+        if (distSq <= r * r)
+        {
+            return true;
+        }
+
+    }
+	
+	return false;
 }
 Model* GenerateTerrain(TextureData *tex)
 {
@@ -158,7 +268,9 @@ void init(void)
 
 
 	// sphere
-	house = LoadModel("house_v10.obj");
+	house = LoadModel("house_v10.obj"); // testwall
+	
+	
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
@@ -238,22 +350,30 @@ float getHeight(float x, float z) {
 }
 
 
-void handleCollision(){
+void handleCollision(mat4 modelmatrix, vec3 lastCameraPosition){
+	bool colliding = false;
 	// Detect Collision with ghost
 	vec3 cam = camera.getPosition();
 	vec3 enemy = gGhostPos;
-	//printf("%d %d %d\n", enemy.x, enemy.y, enemy.z);
 	//cam.y -= 1.0f;
-	if (sphereCollision(cam, 1.0f, enemy, 1.5f))
+	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.5f))
 	{
 		printf("Collision!\n");
+		colliding = true;
 	}
 
-	
-	// Detect Collision with walls in house (page 201 in course book)
-	// Check for each polyhedra in house against camera sphere
-	// if r < n dot c - n dot a (r radius of sphere, c is center of sphere, n is normal of polyhedra in house, a is a vertex in polyhedra) is false we need to check if point is inside the polyhedra and not just the plane it represents then we know that we have collision
+	else if (houseCollision(cam, camera.cameraRadius, modelmatrix)){
+		printf("House Collision\n");
+		colliding = true;
+	}
 
+	if (colliding){
+		camera.setPosition(lastCameraPosition);
+	}
+
+
+
+	
 }
 void display(void)
 {
@@ -272,8 +392,10 @@ void display(void)
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
 	float deltaTime = currentTime - lastTime;
 	lastTime = currentTime;
+
+	vec3 lastCameraPosition = camera.getPosition();
 	camera.update(deltaTime);
-	
+	vec3 currentCameraPosition = camera.getPosition();
 	
 
 	mat4 view = camera.getViewMatrix();
@@ -285,12 +407,13 @@ void display(void)
 	//objPos.x += 0.01;
 	//objPos.z += 0.02;
 	
-	objPos.y = getHeight(objPos.x, objPos.z);
+	objPos.y = 5;// getHeight(objPos.x, objPos.z);
 
 	mat4 placeDowns = T(objPos.x, objPos.y, objPos.z);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(house, program, "inPosition", "inNormal", "inTexCoord");
 
+	handleCollision(placeDowns, lastCameraPosition);
 
 
 
@@ -312,7 +435,6 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
-	handleCollision();
 	printError("display 2");
 	
 	glutSwapBuffers();

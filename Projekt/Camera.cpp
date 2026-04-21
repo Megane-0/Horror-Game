@@ -7,13 +7,13 @@ extern float getHeight(float x, float z);
 
 Camera::Camera()
 {
-    position = vec3(0.5, 3, 0.7);
+    position = vec3(5, 5, 5);
     horizontalAngle = 0; //3.14
     verticalAngle = 0.0f;
 
     speed = 5.0f;
     cameraHeight = 1.8f;
-    cameraRadius = 0.5f;
+    cameraRadius = 0.35f;
 }
 void Camera::processMouse(float dx, float dy)
 {
@@ -79,4 +79,8 @@ mat4 Camera::getViewMatrix() const
 vec3 Camera::getPosition() const
 {
     return position;
+}
+void Camera::setPosition(vec3 _position)
+{
+   position = _position;
 }
