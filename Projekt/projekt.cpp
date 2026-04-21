@@ -15,7 +15,7 @@ vec3 objPos = vec3(0.0,0.0,0.0);
 vec3 camPos = vec3(0,5,0);
 
 // vertex array object
-Model *m, *m2, *tm, *sphere, *ghost;
+Model *m, *m2, *tm, *house, *ghost;
 // Reference to shader program
 GLuint program;
 GLuint tex1, tex2, tex3;
@@ -41,8 +41,17 @@ unsigned int min(float a, float b) {
 		return b;
 	}
 }
-bool sphereCollision(vec3 p1, float r1, vec3 p2, float r2){
-	return false; // todo
+// Checks if two spheres p1,p2 with radius r1,r2 are colliding
+bool sphereCollision(vec3 p1, float r1, vec3 p2, float r2)
+{
+   	float dx = p1.x - p2.x;
+    float dy = p1.y - p2.y;
+    float dz = p1.z - p2.z;
+
+    float distSq = dx*dx + dy*dy + dz*dz;
+    float r = r1 + r2;
+
+    return distSq <= r*r;
 }
 Model* GenerateTerrain(TextureData *tex)
 {
@@ -149,7 +158,7 @@ void init(void)
 
 
 	// sphere
-	sphere = LoadModel("house_4.obj");
+	house = LoadModel("house_v4.obj");
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
@@ -179,6 +188,7 @@ float getLength(vec2 p1, vec2 p2){
 	return sqrt(pow(p3.x, 2) + pow(p3.y,2));
 	
 }
+
 // https://stackoverflow.com/questions/25385361/point-within-a-triangle-barycentric-co-ordinates
 float barycentricHeight(vec3 A, vec3 B, vec3 C, float x, float z)
 {
@@ -227,8 +237,30 @@ float getHeight(float x, float z) {
 	}
 }
 
+
+void handleCollision(){
+	// Detect Collision with ghost
+	vec3 cam = camera.getPosition();
+	vec3 enemy = gGhostPos;
+	//printf("%d %d %d\n", enemy.x, enemy.y, enemy.z);
+	//cam.y -= 1.0f;
+	if (sphereCollision(cam, 1.0f, enemy, 1.5f))
+	{
+		printf("Collision!\n");
+	}
+
+	
+	// Detect Collision with walls in house (page 201 in course book)
+	// Check for each polyhedra in house against camera sphere
+	// if r < n dot c - n dot a (r radius of sphere, c is center of sphere, n is normal of polyhedra in house, a is a vertex in polyhedra) is false we need to check if point is inside the polyhedra and not just the plane it represents then we know that we have collision
+
+}
 void display(void)
 {
+	if (glutKeyIsDown('p')) // exit program
+		exit(0);
+
+	
 	// clear the screen
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -241,6 +273,8 @@ void display(void)
 	float deltaTime = currentTime - lastTime;
 	lastTime = currentTime;
 	camera.update(deltaTime);
+	
+	
 
 	mat4 view = camera.getViewMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
@@ -248,14 +282,14 @@ void display(void)
 	mat4 modelToWorld = IdentityMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
 	
-	objPos.x += 0.01;
-	objPos.z += 0.02;
+	//objPos.x += 0.01;
+	//objPos.z += 0.02;
 	
 	objPos.y = getHeight(objPos.x, objPos.z);
 
 	mat4 placeDowns = T(objPos.x, objPos.y, objPos.z);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-	DrawModel(sphere, program, "inPosition", "inNormal", "inTexCoord");
+	DrawModel(house, program, "inPosition", "inNormal", "inTexCoord");
 
 
 
@@ -278,7 +312,7 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
-
+	handleCollision();
 	printError("display 2");
 	
 	glutSwapBuffers();
@@ -314,6 +348,7 @@ int main(int argc, char **argv)
 	
 	glutPassiveMotionFunc(mouse);
 	glutMouseFunc(mouseClick);
+
 	glutMainLoop();
 	exit(0);
 }
