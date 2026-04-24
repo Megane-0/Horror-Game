@@ -23,12 +23,8 @@ vec3 objPos = vec3(0.0,0.0,0.0);
 vec3 camPos = vec3(0,5,0);
 
 // vertex array object
-<<<<<<< ours
 Model *m, *m2, *tm, *sphere, *ghost;
 Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor;
-=======
-Model *m, *m2, *tm, *house, *ghost;
->>>>>>> theirs
 // Reference to shader program
 GLuint program;
 GLuint tex1, tex2, tex3;
@@ -59,126 +55,114 @@ unsigned int min(float a, float b) {
 		return b;
 	}
 }
-
-float length(vec3 v)
+float vecLength(vec3 value)
 {
-    return sqrt(dot(v, v));
+	return sqrt(dot(value, value));
 }
 
-// Gets the point on a line ab which is closest to p
 vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 p)
 {
-	// get line
-    vec3 ab = b - a;
-    float t = dot(p - a, ab) / dot(ab, ab);
+	vec3 ab = b - a;
+	float denominator = dot(ab, ab);
+	if (denominator < 1e-8f)
+	{
+		return a;
+	}
 
-	// clamp
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+	float t = dot(p - a, ab) / denominator;
+	if (t < 0.0f) t = 0.0f;
+	if (t > 1.0f) t = 1.0f;
 
-    return a + ab * t;
+	return a + ab * t;
 }
 
 vec3 closestPointTriangle(vec3 p, vec3 a, vec3 b, vec3 c)
 {
-	// get edge vectors
-    vec3 ab = b - a;
-    vec3 ac = c - a;
-    vec3 bc = c - b;
+	vec3 ab = b - a;
+	vec3 ac = c - a;
+	vec3 bc = c - b;
 
-    vec3 ap = p - a;
-    vec3 bp = p - b;
-    vec3 cp = p - c;
+	vec3 ap = p - a;
+	vec3 bp = p - b;
+	vec3 cp = p - c;
 
-	// get normal
-    vec3 n = cross(ab, ac);
+	vec3 n = cross(ab, ac);
 
-    // same-side tests
-    vec3 n1 = cross(ab, ap);// edge AB
-    vec3 n2 = cross(bc, bp);// edge BC
-    vec3 ca = a - c;        // edge CA
-    vec3 n3 = cross(ca, cp);
+	vec3 n1 = cross(ab, ap);
+	vec3 n2 = cross(bc, bp);
+	vec3 ca = a - c;
+	vec3 n3 = cross(ca, cp);
 
-    if (dot(n, n1) >= 0.0f &&
-        dot(n, n2) >= 0.0f &&
-        dot(n, n3) >= 0.0f)
-    {
-        // inside face region -> project onto the plane
-        float denom = dot(n, n);
-        if (denom < 1e-8f) return a; // degenerate triangle, treat as vertex A
-        float dist = dot(p - a, n) / denom;
-        return p - n * dist;
-    }
+	if (dot(n, n1) >= 0.0f &&
+		dot(n, n2) >= 0.0f &&
+		dot(n, n3) >= 0.0f)
+	{
+		float denom = dot(n, n);
+		if (denom < 1e-8f) return a;
+		float dist = dot(p - a, n) / denom;
+		return p - n * dist;
+	}
 
-    // otherwise check the three edges
-    vec3 p1 = closestPointOnSegment(a, b, p);
-    vec3 p2 = closestPointOnSegment(b, c, p);
-    vec3 p3 = closestPointOnSegment(c, a, p);
+	vec3 p1 = closestPointOnSegment(a, b, p);
+	vec3 p2 = closestPointOnSegment(b, c, p);
+	vec3 p3 = closestPointOnSegment(c, a, p);
 
-    float d1 = length(p - p1);
-    float d2 = length(p - p2);
-    float d3 = length(p - p3);
+	float d1 = vecLength(p - p1);
+	float d2 = vecLength(p - p2);
+	float d3 = vecLength(p - p3);
 
-	// compare distances
-    if (d1 <= d2 && d1 <= d3) return p1;
-    if (d2 <= d3) return p2;
-    return p3;
+	if (d1 <= d2 && d1 <= d3) return p1;
+	if (d2 <= d3) return p2;
+	return p3;
 }
 
-// Checks if two spheres p1,p2 with radius r1,r2 are colliding
 bool sphereCollision(vec3 p1, float r1, vec3 p2, float r2)
 {
-   	float dx = p1.x - p2.x;
-    float dy = p1.y - p2.y;
-    float dz = p1.z - p2.z;
+	float dx = p1.x - p2.x;
+	float dy = p1.y - p2.y;
+	float dz = p1.z - p2.z;
 
-    float distSq = dx*dx + dy*dy + dz*dz;
-    float r = r1 + r2;
+	float distSq = dx*dx + dy*dy + dz*dz;
+	float r = r1 + r2;
 
-    return distSq <= r*r;
+	return distSq <= r*r;
 }
 
-// Checks for collision between camera and house model
-bool houseCollision(vec3 cam, float r, mat4 modelmatrix){
-	// checks collision with house
-	for (int i = 0; i < house->numIndices; i += 3)
-    {
-        int i0 = house->indexArray[i];
-        int i1 = house->indexArray[i+1];
-        int i2 = house->indexArray[i+2];
+bool modelCollision(Model* model, vec3 cam, float r, mat4 modelMatrix)
+{
+	if (model == NULL) return false;
 
-        vec3 a = house->vertexArray[i0];
-        vec3 b = house->vertexArray[i1];
-        vec3 c = house->vertexArray[i2];
-		
-		// transform to world space
-		vec3 aWorld = MultVec3(modelmatrix, a);
-		vec3 bWorld = MultVec3(modelmatrix, b);
-		vec3 cWorld = MultVec3(modelmatrix, c);
+	for (int i = 0; i < model->numIndices; i += 3)
+	{
+		int i0 = model->indexArray[i];
+		int i1 = model->indexArray[i + 1];
+		int i2 = model->indexArray[i + 2];
 
-		vec3 normal = normalize(cross(bWorld -aWorld, cWorld - aWorld));
-		
-		// early rejection (distance)
-		if (length(cam - aWorld) > 10.0f) continue;
-		
-		// early rejection (face)
+		vec3 a = model->vertexArray[i0];
+		vec3 b = model->vertexArray[i1];
+		vec3 c = model->vertexArray[i2];
+
+		vec3 aWorld = MultVec3(modelMatrix, a);
+		vec3 bWorld = MultVec3(modelMatrix, b);
+		vec3 cWorld = MultVec3(modelMatrix, c);
+
+		vec3 normal = normalize(cross(bWorld - aWorld, cWorld - aWorld));
+
+		if (vecLength(cam - aWorld) > 10.0f) continue;
+
 		vec3 camToTri = cam - aWorld;
 		if (dot(normal, camToTri) < 0) continue;
 
-		// get closest point to triangle
 		vec3 q = closestPointTriangle(cam, aWorld, bWorld, cWorld);
+		vec3 diff = cam - q;
+		float distSq = dot(diff, diff);
 
-		// check distance to point and compare against radius
-        vec3 diff = cam - q;
-        float distSq = dot(diff, diff);
+		if (distSq <= r * r)
+		{
+			return true;
+		}
+	}
 
-        if (distSq <= r * r)
-        {
-            return true;
-        }
-
-    }
-	
 	return false;
 }
 Model* GenerateTerrain(TextureData *tex)
@@ -317,13 +301,6 @@ void init(void)
     doors.push_back(d2);
 
 
-<<<<<<< ours
-=======
-	// sphere
-	house = LoadModel("house_v10.obj"); // testwall
-	
-	
->>>>>>> theirs
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
@@ -353,7 +330,6 @@ float getLength(vec2 p1, vec2 p2){
 	return sqrt(pow(p3.x, 2) + pow(p3.y,2));
 	
 }
-
 // https://stackoverflow.com/questions/25385361/point-within-a-triangle-barycentric-co-ordinates
 float barycentricHeight(vec3 A, vec3 B, vec3 C, float x, float z)
 {
@@ -402,39 +378,32 @@ float getHeight(float x, float z) {
 	}
 }
 
-
-void handleCollision(mat4 modelmatrix, vec3 lastCameraPosition){
+void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
+{
 	bool colliding = false;
-	// Detect Collision with ghost
 	vec3 cam = camera.getPosition();
 	vec3 enemy = gGhostPos;
-	//cam.y -= 1.0f;
+
 	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.5f))
 	{
 		printf("Collision!\n");
 		colliding = true;
 	}
-
-	else if (houseCollision(cam, camera.cameraRadius, modelmatrix)){
+	else if (modelCollision(modelWall, cam, camera.cameraRadius, houseMatrix))
+	{
 		printf("House Collision\n");
 		colliding = true;
 	}
 
-	if (colliding){
+	if (colliding)
+	{
 		camera.setPosition(lastCameraPosition);
 	}
-
-
-
-	
 }
+
 void display(void)
 {
-	if (glutKeyIsDown('p')) // exit program
-		exit(0);
-
-	
-	// clear the screen
+	// clear the screengit 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	
@@ -445,18 +414,14 @@ void display(void)
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
 	float deltaTime = currentTime - lastTime;
 	lastTime = currentTime;
-
 	vec3 lastCameraPosition = camera.getPosition();
 	camera.update(deltaTime);
-	vec3 currentCameraPosition = camera.getPosition();
-	
 
 	mat4 view = camera.getViewMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
 
 	mat4 modelToWorld = IdentityMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
-<<<<<<< ours
 
 	//--- House part ---//
 
@@ -492,19 +457,6 @@ void display(void)
         // (Animation)
         if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
         if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
-=======
-	
-	//objPos.x += 0.01;
-	//objPos.z += 0.02;
-	
-	objPos.y = 5;// getHeight(objPos.x, objPos.z);
-
-	mat4 placeDowns = T(objPos.x, objPos.y, objPos.z);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-	DrawModel(house, program, "inPosition", "inNormal", "inTexCoord");
-
-	handleCollision(placeDowns, lastCameraPosition);
->>>>>>> theirs
 
         // Calculate door matrix
         mat4 doorMatrix = Mult(houseMatrix,
@@ -516,6 +468,8 @@ void display(void)
         glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
         DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
     }
+
+	handleCollision(houseMatrix, lastCameraPosition);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex3); // Temporarily set the ghost 
@@ -534,6 +488,7 @@ void display(void)
 	mat4 placeDowns = mat4(1.0);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+
 
 	printError("display 2");
 	
@@ -577,7 +532,6 @@ int main(int argc, char **argv)
 	
 	glutPassiveMotionFunc(mouse);
 	glutMouseFunc(mouseClick);
-
 	glutMainLoop();
 	exit(0);
 }
