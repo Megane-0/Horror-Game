@@ -10,19 +10,33 @@
 
 #define cameraSpeed 0.3
 
+
+struct Door {
+    Model* model;
+    vec3 pivot;         
+    float angle;        
+    float targetAngle; 
+};
+
 mat4 projectionMatrix;
 vec3 objPos = vec3(0.0,0.0,0.0);
 vec3 camPos = vec3(0,5,0);
 
 // vertex array object
 Model *m, *m2, *tm, *sphere, *ghost;
+Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor;
 // Reference to shader program
 GLuint program;
 GLuint tex1, tex2, tex3;
+GLuint texWall, texFloor, texDoor, texCeiling; // House textures
 TextureData ttex; // terrain
 vec3 *vertexArray;
 Camera camera;
 int CENTER_X = 1024/2, CENTER_Y = 768/2;
+
+// Door animation variables
+float doorSpeed = 2.5f;          
+std::vector<Door> doors;
 
 unsigned int max(float a, float b) {
 
@@ -59,15 +73,18 @@ Model* GenerateTerrain(TextureData *tex)
 	for (x = 0; x < tex->width; x++)
 		for (z = 0; z < tex->height; z++)
 		{
-			// Vertex array. You need to scale this properly
 
 			vertexArray[(x + z * tex->width)].x = x / 1.0;
-			vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
+			//vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
+			vertexArray[(x + z * tex->width)].y = 0.0f; // Flaten terrain
 			vertexArray[(x + z * tex->width)].z = z / 1.0;
 
 			// Texture coordinates. You may want to scale them.
 			texCoordArray[(x + z * tex->width)].x = x; // (float)x / tex->width;
 			texCoordArray[(x + z * tex->width)].y = z; // (float)z / tex->height;
+			
+			normalArray[(x + z * tex->width)] = vec3(0.0f, 1.0f, 0.0f); // uppåt-normals
+
 		}
 			
 	for (x = 0; x < tex->width; x++)
@@ -138,18 +155,45 @@ void init(void)
 	LoadTGATextureSimple("maskros512.tga", &tex1);
 	LoadTGATextureSimple("ghost_texture.tga", &tex3);
 	//LoadTGATextureSimple("44-terrain.tga", &tex2);
-	
+	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
+	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
+	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texDoor); // TODO: Separate door texture
+	//LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex1);		// Bind Our Texture tex1
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, tex2);		// Bind Our Texture tex2
+	//glActiveTexture(GL_TEXTURE1);
+	//glBindTexture(GL_TEXTURE_2D, tex2);		// Bind Our Texture tex2
 
 	glUniform1i(glGetUniformLocation(program, "tex1"), 0); // Texture unit 0
-	glUniform1i(glGetUniformLocation(program, "tex2"), 1); // Texture unit 1
+	
 
 
-	// sphere
-	sphere = LoadModel("house_v10.obj");
+
+	modelWall= LoadModel("house-objects/walls.obj");
+	modelFloor = LoadModel("house-objects/floor.obj");
+	//modelCeiling = LoadModel("house-objects/ceiling.obj");
+	modelFrames = LoadModel("house-objects/frames.obj");
+	
+
+	// Door 1: Main entrance
+    Door d1;
+    d1.model = LoadModel("house-objects/door_main_entrance.obj");
+    d1.pivot = vec3(-2.81285f, 1.0f, 5.54151f); 
+	//d1.pivot = vec3(-3.1285f, 1.0f, 5.56151f); 
+    d1.angle = 0.0f;
+    d1.targetAngle = 0.0f;
+    doors.push_back(d1);
+
+
+    Door d2;
+    d2.model = LoadModel("house-objects/door_2.obj");
+    d2.pivot = vec3(-2.7f, 1.0f, 2.66f);
+    d2.angle = 0.0f;
+    d2.targetAngle = 0.0f;
+    doors.push_back(d2);
+
+
 
 	// load ghost model
 	ghost = LoadModel("ghost.obj");
@@ -247,18 +291,52 @@ void display(void)
 
 	mat4 modelToWorld = IdentityMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
-	
-	objPos.x += 0.01;
-	objPos.z += 0.02;
-	
-	objPos.y = getHeight(objPos.x, objPos.z);
 
-	mat4 placeDowns = T(objPos.x, objPos.y, objPos.z);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-	DrawModel(sphere, program, "inPosition", "inNormal", "inTexCoord");
+	//--- House part ---//
 
 
+	 // House
+	vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
+	housePos.y = getHeight(housePos.x, housePos.z);
+	mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
+	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, houseMatrix.m);
 
+
+	// walls
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texWall);
+	DrawModel(modelWall, program, "inPosition", "inNormal", "inTexCoord");
+
+	// frames
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, tex3);
+	DrawModel(modelFrames, program, "inPosition", "inNormal", "inTexCoord");
+
+	// floor
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texFloor);
+	DrawModel(modelFloor, program, "inPosition", "inNormal", "inTexCoord");
+
+	// door
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texDoor);
+
+
+    for (int i = 0; i < doors.size(); i++) {
+        // (Animation)
+        if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
+        if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
+
+        // Calculate door matrix
+        mat4 doorMatrix = Mult(houseMatrix,
+            Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
+            Mult(Ry(doors[i].angle),
+                T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
+
+        // draw
+        glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
+        DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
+    }
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex3); // Temporarily set the ghost 
@@ -274,7 +352,7 @@ void display(void)
 	glBindTexture(GL_TEXTURE_2D, tex1); // And now turn off ghost bind
 	
 
-	placeDowns = mat4(1.0);
+	mat4 placeDowns = mat4(1.0);
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
@@ -296,7 +374,14 @@ void mouse(int x, int y)
 }
 
 void mouseClick(int button, int state, int x, int y){
-	printf("%d %d\n", x, y);
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+    {
+        for (size_t i = 0; i < doors.size(); ++i)
+        {
+            if (doors[i].targetAngle < 0.1f) doors[i].targetAngle = 1.5f;
+            else                              doors[i].targetAngle = 0.0f;
+        }
+    }
 }
 
 int main(int argc, char **argv)

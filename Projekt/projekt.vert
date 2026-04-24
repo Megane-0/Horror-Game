@@ -21,5 +21,6 @@ void main(void)
 	texCoord = inTexCoord;
 	gl_Position = projMatrix * viewMatrix * modelMatrix * placeDowns *vec4(inPosition, 1.0);
 	pixelPos = inPosition;
+
 	
 }
