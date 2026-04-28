@@ -24,11 +24,11 @@ vec3 camPos = vec3(0,5,0);
 
 // vertex array object
 Model *m, *m2, *tm, *sphere, *ghost;
-Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor;
+Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor, *modelWindow;
 // Reference to shader program
 GLuint program;
 GLuint tex1, tex2, tex3;
-GLuint texWall, texFloor, texDoor, texCeiling; // House textures
+GLuint texWall, texFloor, texDoor, texCeiling, texWindow; // House textures
 TextureData ttex; // terrain
 vec3 *vertexArray;
 Camera camera;
@@ -265,7 +265,9 @@ void init(void)
 	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
 	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
 	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texDoor); // TODO: Separate door texture
-	//LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
+	LoadTGATextureSimple("house-objects/house-textures/shatteredglass.tga", &texWindow);
+	
+	LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex1);		// Bind Our Texture tex1
@@ -279,8 +281,10 @@ void init(void)
 
 	modelWall= LoadModel("house-objects/walls.obj");
 	modelFloor = LoadModel("house-objects/floor.obj");
-	//modelCeiling = LoadModel("house-objects/ceiling.obj");
+	modelCeiling = LoadModel("house-objects/ceiling.obj");
 	modelFrames = LoadModel("house-objects/frames.obj");
+
+	modelWindow = LoadModel("house-objects/windowFixed.obj");
 	
 
 	// Door 1: Main entrance
@@ -300,6 +304,26 @@ void init(void)
     d2.targetAngle = 0.0f;
     doors.push_back(d2);
 
+	Door d3;
+	d3.model = LoadModel("house-objects/door_3.obj");
+	d3.pivot = vec3(-4.5f, 1.0f, 2.76f);
+	d3.angle = 0.0f;
+	d3.targetAngle = 0.0f;
+	doors.push_back(d3);
+
+	Door d4;
+	d4.model = LoadModel("house-objects/door_4.obj");
+	d4.pivot = vec3(-6.46f, 1.0f, 2.76f);
+	d4.angle = 0.0f;
+	d4.targetAngle = 0.0f;
+	doors.push_back(d4);
+
+	Door d5;
+	d5.model = LoadModel("house-objects/door_5.obj");
+	d5.pivot = vec3(0.278f, 1.0f, -0.482103f);
+	d5.angle = 0.0f;
+	d5.targetAngle = 0.0f;
+	doors.push_back(d5);
 
 
 	// load ghost model
@@ -447,6 +471,17 @@ void display(void)
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texFloor);
 	DrawModel(modelFloor, program, "inPosition", "inNormal", "inTexCoord");
+
+	// ceiling
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texCeiling);
+	DrawModel(modelCeiling, program, "inPosition", "inNormal", "inTexCoord");
+
+	// windows	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texWindow);
+	DrawModel(modelWindow, program, "inPosition", "inNormal", "inTexCoord");
+
 
 	// door
 	glActiveTexture(GL_TEXTURE0);
