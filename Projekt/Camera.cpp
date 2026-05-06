@@ -7,7 +7,7 @@ extern float getHeight(float x, float z);
 
 Camera::Camera()
 {
-    position = vec3(5, 5, 5);
+    position = vec3(10, 1, 10);
     horizontalAngle = 0; //3.14
     verticalAngle = 0.0f;
 

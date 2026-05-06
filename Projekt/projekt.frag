@@ -8,20 +8,37 @@ uniform sampler2D tex2;
 
 in vec3 exNormal;
 
+in vec3 fragPos;
+
+uniform vec3 lightPos;
+uniform vec3 lightColor;
+// attenuation constants
+const float lightConstant = 1.0;
+const float lightLinear = 0.09;
+const float lightQuadratic = 0.032;
+
 void main(void)
 {
 	// Get texture pixel
-	vec3 texColor = vec3(0, 0, 0);
-	texColor = texture(tex1, texCoord).rgb;
+	vec3 texColor = texture(tex1, texCoord).rgb;
 
-	// Fake lighting
-	vec3 N = normalize(-exNormal);
-	vec3 L = normalize(vec3(-0.3, 0.8, -0.2)); // Source
-    float diff = max(dot(N, L), 0.0); // Diffuse lighting
+	// Normal (ensure consistent orientation)
+	vec3 N = normalize(exNormal);
 
-	// Combine texture, lighting + ambient
-	float ambient = 0.2;
-	vec3 finalColor = texColor * (ambient + diff);
-    
-    outColor = vec4(finalColor, 1.0);
+	// Light vector and attenuation
+	vec3 L = lightPos - fragPos;
+	float distance = length(L);
+	L = normalize(L);
+
+	float attenuation = 1.0 / (lightConstant + lightLinear * distance + lightQuadratic * (distance * distance));
+
+	// Diffuse term
+	float diff = max(dot(N, L), 0.0);
+
+	// Ambient
+	float ambientStrength = 0.12;
+
+	vec3 lighting = (ambientStrength * texColor) + (texColor * diff * lightColor * attenuation);
+
+	outColor = vec4(lighting, 1.0);
 }

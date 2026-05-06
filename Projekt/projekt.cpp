@@ -24,7 +24,7 @@ vec3 camPos = vec3(0,5,0);
 
 // vertex array object
 Model *m, *m2, *tm, *sphere, *ghost;
-Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor, *modelWindow;
+Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor, *modelWindow, *modelFurnitues;
 // Reference to shader program
 GLuint program;
 GLuint tex1, tex2, tex3;
@@ -33,6 +33,10 @@ TextureData ttex; // terrain
 vec3 *vertexArray;
 Camera camera;
 int CENTER_X = 1024/2, CENTER_Y = 768/2;
+
+// Scene light (lamp inside the house)
+vec3 lightPos = vec3(8.1f, 2.0f, 11.0f);
+vec3 lightColor = vec3(1.0f, 0.95f, 0.8f);
 
 // Door animation variables
 float doorSpeed = 2.5f;          
@@ -181,10 +185,10 @@ Model* GenerateTerrain(TextureData *tex)
 		for (z = 0; z < tex->height; z++)
 		{
 
-			vertexArray[(x + z * tex->width)].x = x / 1.0;
+			vertexArray[(x + z * tex->width)].x = x / 5.0;
 			//vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
 			vertexArray[(x + z * tex->width)].y = 0.0f; // Flaten terrain
-			vertexArray[(x + z * tex->width)].z = z / 1.0;
+			vertexArray[(x + z * tex->width)].z = z / 5.0;
 
 			// Texture coordinates. You may want to scale them.
 			texCoordArray[(x + z * tex->width)].x = x; // (float)x / tex->width;
@@ -256,6 +260,10 @@ void init(void)
 	printError("init shader");
 	
 	glUniformMatrix4fv(glGetUniformLocation(program, "projMatrix"), 1, GL_TRUE, projectionMatrix.m);
+
+	// Upload light parameters
+	glUniform3fv(glGetUniformLocation(program, "lightPos"), 1, &lightPos.x);
+	glUniform3fv(glGetUniformLocation(program, "lightColor"), 1, &lightColor.x);
 	
 
 
@@ -285,6 +293,8 @@ void init(void)
 	modelFrames = LoadModel("house-objects/frames.obj");
 
 	modelWindow = LoadModel("house-objects/windowFixed.obj");
+
+	modelFurnitues = LoadModel("house-objects/furniture.obj");
 	
 
 	// Door 1: Main entrance
@@ -415,7 +425,7 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 	}
 	else if (modelCollision(modelWall, cam, camera.cameraRadius, houseMatrix))
 	{
-		printf("House Collision\n");
+		//printf("House Collision\n");
 		colliding = true;
 	}
 
@@ -482,6 +492,11 @@ void display(void)
 	glBindTexture(GL_TEXTURE_2D, texWindow);
 	DrawModel(modelWindow, program, "inPosition", "inNormal", "inTexCoord");
 
+	//furniture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texCeiling);
+	DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
+
 
 	// door
 	glActiveTexture(GL_TEXTURE0);
@@ -492,6 +507,7 @@ void display(void)
         // (Animation)
         if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
         if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
+	    if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
 
         // Calculate door matrix
         mat4 doorMatrix = Mult(houseMatrix,
@@ -542,12 +558,50 @@ void mouse(int x, int y)
 }
 
 void mouseClick(int button, int state, int x, int y){
+
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
+        // Find closest door to camera
+        vec3 camPos = camera.getPosition();
+		
+		// House position (same as in display())
+		vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
+		housePos.y = getHeight(housePos.x, housePos.z);
+		mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
+		
+        float closestDist = 1000.0f;
+        int closestDoorIdx = -1;
+
         for (size_t i = 0; i < doors.size(); ++i)
         {
-            if (doors[i].targetAngle < 0.1f) doors[i].targetAngle = 1.5f;
-            else                              doors[i].targetAngle = 0.0f;
+            // Transform door pivot to world coordinates
+            vec3 doorLocalPos = doors[i].pivot;
+            vec3 doorWorldPos = MultVec3(houseMatrix, doorLocalPos);
+            
+            vec3 diff = camPos - doorWorldPos;
+            float dist = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+
+            // Only consider doors within reasonable range
+            if (dist < 15.0f && dist < closestDist)
+            {
+                closestDist = dist;
+                closestDoorIdx = (int)i;
+                printf("Door %zu at world pos (%.2f, %.2f, %.2f), distance: %.2f\n", 
+                       i, doorWorldPos.x, doorWorldPos.y, doorWorldPos.z, dist);
+            }
+        }
+
+        // Toggle only the closest door
+        if (closestDoorIdx >= 0)
+        {
+            printf("Toggling door %d\n", closestDoorIdx);
+            if (fabs(doors[closestDoorIdx].angle - doors[closestDoorIdx].targetAngle) < 0.01f)
+            {
+                if (doors[closestDoorIdx].targetAngle < 0.1f)
+                    doors[closestDoorIdx].targetAngle = 1.5f;
+                else
+                    doors[closestDoorIdx].targetAngle = 0.0f;
+            }
         }
     }
 }
