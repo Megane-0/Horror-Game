@@ -45,7 +45,7 @@ std::vector<Door> doors;
 Model* mirrorQuad;
 mat4 mirrorMatrix;
 
-vec3 mirrorPoint = vec3(8.0f, 2.0f, 10.0f);
+vec3 mirrorPoint = vec3(8.0f, 12.0f, 10.0f);
 vec3 mirrorNormal = vec3(0, 0, 1); // facing +Z
 
 // helper for mirrors
@@ -365,7 +365,7 @@ void init(void)
     };
     
     // Set up the ghost: Start Pos, Speed, Path
-    initGhost(vec3(10, 10, 10), 2.0f, path);
+    initGhost(vec3(8.0f, 12.0f, 14.0f), 0.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 	//mirror
@@ -390,7 +390,7 @@ void init(void)
 		4,
 		6
 	);
-	mirrorMatrix = T(8.0f, 2.0f, 10.0f);
+	mirrorMatrix = T(8.0f, 12.0f, 10.0f);
 }
 
 float getLength(vec2 p1, vec2 p2){
@@ -618,11 +618,7 @@ void display(void)
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 
-
-
 	renderScene(reflectedView, deltaTime);
-
-
 
 	glStencilMask(0xFF);
 	glDisable(GL_STENCIL_TEST);
