@@ -42,6 +42,18 @@ vec3 lightColor = vec3(1.0f, 0.95f, 0.8f);
 float doorSpeed = 2.5f;          
 std::vector<Door> doors;
 
+Model* mirrorQuad;
+mat4 mirrorMatrix;
+
+vec3 mirrorPoint = vec3(8.0f, 2.0f, 10.0f);
+vec3 mirrorNormal = vec3(0, 0, 1); // facing +Z
+
+// helper for mirrors
+vec3 reflectVector(vec3 v, vec3 n)
+{
+    return v - 2.0f * dot(v, n) * n;
+}
+
 unsigned int max(float a, float b) {
 
 	if (a >= b) {
@@ -356,6 +368,29 @@ void init(void)
     initGhost(vec3(10, 10, 10), 2.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
+	//mirror
+
+	vec3 mirrorVertices[] = {
+    vec3(-1, 0, 0),
+    vec3( 1, 0, 0),
+    vec3( 1, 2, 0),
+    vec3(-1, 2, 0)
+	};
+
+	GLuint mirrorIndices[] = {
+		0,1,2,
+		2,3,0
+	};
+	mirrorQuad = LoadDataToModel(
+		mirrorVertices,
+		NULL,
+		NULL,
+		NULL,
+		mirrorIndices,
+		4,
+		6
+	);
+	mirrorMatrix = T(8.0f, 2.0f, 10.0f);
 }
 
 float getLength(vec2 p1, vec2 p2){
@@ -434,116 +469,167 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 		camera.setPosition(lastCameraPosition);
 	}
 }
-
-void display(void)
+void renderScene(mat4 viewMatrix, float deltaTime)
 {
-	// clear the screengit 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	
-	printError("pre display");
-	
-	glUseProgram(program);
-	static float lastTime = 0;
-	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-	float deltaTime = currentTime - lastTime;
-	lastTime = currentTime;
-	vec3 lastCameraPosition = camera.getPosition();
-	camera.update(deltaTime);
+    glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, viewMatrix.m);
 
-	mat4 view = camera.getViewMatrix();
-	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+    mat4 modelToWorld = IdentityMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
 
-	mat4 modelToWorld = IdentityMatrix();
-	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
+    // housee 
+    vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
+    housePos.y = getHeight(housePos.x, housePos.z);
+    mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, houseMatrix.m);
 
-	//--- House part ---//
+    // walls
+    glBindTexture(GL_TEXTURE_2D, texWall);
+    DrawModel(modelWall, program, "inPosition", "inNormal", "inTexCoord");
 
+    // frames
+    glBindTexture(GL_TEXTURE_2D, tex3);
+    DrawModel(modelFrames, program, "inPosition", "inNormal", "inTexCoord");
 
-	 // House
-	vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
-	housePos.y = getHeight(housePos.x, housePos.z);
-	mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, houseMatrix.m);
+    // floor
+    glBindTexture(GL_TEXTURE_2D, texFloor);
+    DrawModel(modelFloor, program, "inPosition", "inNormal", "inTexCoord");
 
+    // ceiling
+    glBindTexture(GL_TEXTURE_2D, texCeiling);
+    DrawModel(modelCeiling, program, "inPosition", "inNormal", "inTexCoord");
 
-	// walls
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texWall);
-	DrawModel(modelWall, program, "inPosition", "inNormal", "inTexCoord");
+    // windows
+    glBindTexture(GL_TEXTURE_2D, texWindow);
+    DrawModel(modelWindow, program, "inPosition", "inNormal", "inTexCoord");
 
-	// frames
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex3);
-	DrawModel(modelFrames, program, "inPosition", "inNormal", "inTexCoord");
+    // furniture
+    glBindTexture(GL_TEXTURE_2D, texCeiling);
+    DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
 
-	// floor
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texFloor);
-	DrawModel(modelFloor, program, "inPosition", "inNormal", "inTexCoord");
+    // doors
+    glBindTexture(GL_TEXTURE_2D, texDoor);
 
-	// ceiling
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texCeiling);
-	DrawModel(modelCeiling, program, "inPosition", "inNormal", "inTexCoord");
-
-	// windows	
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texWindow);
-	DrawModel(modelWindow, program, "inPosition", "inNormal", "inTexCoord");
-
-	//furniture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texCeiling);
-	DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
-
-
-	// door
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texDoor);
-
-
-    for (int i = 0; i < doors.size(); i++) {
-        // (Animation)
+    for (int i = 0; i < doors.size(); i++)
+    {
+        // animation 
         if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
         if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
-	    if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
+        if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
 
-        // Calculate door matrix
         mat4 doorMatrix = Mult(houseMatrix,
             Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
             Mult(Ry(doors[i].angle),
                 T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
 
-        // draw
         glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
         DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
     }
 
-	handleCollision(houseMatrix, lastCameraPosition);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex3); // Temporarily set the ghost 
-
-	updateGhost(deltaTime); // Update the math
+    // ghost
+    glBindTexture(GL_TEXTURE_2D, tex3);
 
     mat4 ghostMatrix = getGhostMoveMatrix();
-    
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
     DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex1); // And now turn off ghost bind
-	
+    // terrain
+    glBindTexture(GL_TEXTURE_2D, tex1);
 
-	mat4 placeDowns = mat4(1.0);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+    mat4 placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+    DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+
+	glDisable(GL_STENCIL_TEST);
+}
+void display(void)
+{
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glUseProgram(program);
+
+    static float lastTime = 0;
+    float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+    float deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    vec3 lastCameraPosition = camera.getPosition();
+
+    // update positions
+    camera.update(deltaTime);
+    updateGhost(deltaTime);
+
+    // collision
+    vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
+    housePos.y = getHeight(housePos.x, housePos.z);
+    mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
+
+    handleCollision(houseMatrix, lastCameraPosition);
+
+    // render
+    mat4 view = camera.getViewMatrix();
+
+	vec3 camPos = camera.getPosition();
+
+	// reflect position
+	vec3 toCam = camPos - mirrorPoint;
+	vec3 reflectedPos = mirrorPoint + reflectVector(toCam, mirrorNormal);
+
+	// reflect direction vectors
+	vec3 forward = camera.getForward();
+	vec3 up = camera.getUp();
+
+	vec3 reflectedForward = reflectVector(forward, mirrorNormal);
+	vec3 reflectedUp = reflectVector(up, mirrorNormal);
+
+	mat4 reflectedView = lookAt(
+		reflectedPos,
+		reflectedPos + reflectedForward,
+		reflectedUp
+	);
+
+	glEnable(GL_STENCIL_TEST);
+
+	// 1. write 1s where mirror is
+	glStencilMask(0xFF);
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthMask(GL_FALSE);
+
+	mat4 identity = IdentityMatrix();
+	glEnable(GL_DEPTH_TEST);
+
+	// draw ONLY mirror quad into stencil
+	glUniformMatrix4fv(
+		glGetUniformLocation(program, "placeDowns"),
+		1, GL_TRUE,
+		mirrorMatrix.m
+	);
+
+	DrawModel(mirrorQuad, program, "inPosition", "inNormal", "inTexCoord");
+
+	// restore
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDepthMask(GL_TRUE);
+
+	glStencilFunc(GL_EQUAL, 1, 0xFF);
+	glStencilMask(0x00);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
 
 
-	printError("display 2");
-	
-	glutSwapBuffers();
+
+	renderScene(reflectedView, deltaTime);
+
+
+
+	glStencilMask(0xFF);
+	glDisable(GL_STENCIL_TEST);
+	// normal scene
+    renderScene(view, deltaTime);
+
+    glutSwapBuffers();
 }
 
 void mouse(int x, int y)
@@ -609,7 +695,7 @@ void mouseClick(int button, int state, int x, int y){
 int main(int argc, char **argv)
 {
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL);
 	glutInitContextVersion(3, 2);
 	glutInitWindowSize (1024, 768);
 
