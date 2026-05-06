@@ -42,6 +42,8 @@ vec3 lightColor = vec3(1.0f, 0.95f, 0.8f);
 float doorSpeed = 2.5f;          
 std::vector<Door> doors;
 
+bool ghostCollisionTriggered = false;
+
 unsigned int max(float a, float b) {
 
 	if (a >= b) {
@@ -347,13 +349,26 @@ void init(void)
 
 	// Set up ghost
 	std::vector<vec3> path = {
-        {10.0f, 10.0f, 0.0f},
-        {10.0f, 10.0f, 10.0f},
-        {5.0f, 10.0f, 5.0f}
+		//corner room - start
+		{4.0f, 1.0f, 7.0f}, 
+    	{3.0f, 1.0f, 7.0f},
+      	{4.6f, 1.0f, 10.0f},
+		{5.04f, 1.80f, 11.25f},
+		//bed room
+		{5.09f, 1.83f, 14.65f}, 
+		{5.04f, 1.80f, 11.25f}, 
+		//Living room
+		{6.76f, 1.80f, 12.05f}, 
+		{6.59f, 1.80f, 6.10f},
+		{8.38f, 1.80f, 6.22f}, 
+		{8.38f, 1.80f, 12.00f},
+		
+		
+	    
     };
     
     // Set up the ghost: Start Pos, Speed, Path
-    initGhost(vec3(10, 10, 10), 2.0f, path);
+    initGhost(vec3(4, 1, 7), 1.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 }
@@ -411,7 +426,10 @@ float getHeight(float x, float z) {
 		return barycentricHeight(p1, p4, p2, x, z);
 	}
 }
-
+void onGhostCollision() {
+	camera.setPosition(vec3(7.0f, 1.0f, 18.0f)); 
+	printf("The ghost has collided with you!\n");
+}
 void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 {
 	bool colliding = false;
@@ -420,20 +438,45 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 
 	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.5f))
 	{
-		printf("Collision!\n");
-		colliding = true;
+		if (!ghostCollisionTriggered)
+        {
+            onGhostCollision();
+            ghostCollisionTriggered = true;
+        }
+        //colliding = true;
 	}
-	else if (modelCollision(modelWall, cam, camera.cameraRadius, houseMatrix))
+
+	else
+    {
+        ghostCollisionTriggered = false;
+    }
+
+	if (modelCollision(modelWall, cam, camera.cameraRadius, houseMatrix))
 	{
-		//printf("House Collision\n");
+		printf("House Collision\n");
 		colliding = true;
 	}
+
+    for (int i = 0; i < doors.size(); i++) {
+        
+        mat4 doorMatrix = Mult(houseMatrix,
+            Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
+            Mult(Ry(doors[i].angle),
+                T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
+
+        if (modelCollision(doors[i].model, cam, camera.cameraRadius, doorMatrix))
+        {
+            printf("Door Collision!\n");
+            colliding = true;
+        }
+    }
 
 	if (colliding)
 	{
 		camera.setPosition(lastCameraPosition);
 	}
 }
+
 
 void display(void)
 {
@@ -504,6 +547,8 @@ void display(void)
 
 
     for (int i = 0; i < doors.size(); i++) {
+
+		
         // (Animation)
         if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
         if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
@@ -563,6 +608,7 @@ void mouseClick(int button, int state, int x, int y){
     {
         // Find closest door to camera
         vec3 camPos = camera.getPosition();
+		//printf("Camera position: (%.2f, %.2f, %.2f)\n", camPos.x, camPos.y, camPos.z);
 		
 		// House position (same as in display())
 		vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
@@ -586,15 +632,13 @@ void mouseClick(int button, int state, int x, int y){
             {
                 closestDist = dist;
                 closestDoorIdx = (int)i;
-                printf("Door %zu at world pos (%.2f, %.2f, %.2f), distance: %.2f\n", 
-                       i, doorWorldPos.x, doorWorldPos.y, doorWorldPos.z, dist);
+
             }
         }
 
         // Toggle only the closest door
         if (closestDoorIdx >= 0)
         {
-            printf("Toggling door %d\n", closestDoorIdx);
             if (fabs(doors[closestDoorIdx].angle - doors[closestDoorIdx].targetAngle) < 0.01f)
             {
                 if (doors[closestDoorIdx].targetAngle < 0.1f)
