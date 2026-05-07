@@ -1,12 +1,12 @@
 #version 150
 
-out vec4 outColor;
 in vec2 texCoord;
+in vec3 exNormal;
+
+out vec4 outColor;
 
 uniform sampler2D tex1;
 uniform sampler2D tex2;
-
-in vec3 exNormal;
 
 void main(void)
 {

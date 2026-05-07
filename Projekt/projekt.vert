@@ -12,16 +12,14 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 placeDowns;
 
-
 void main(void)
 {
-	// Pass texture to frag
+	// Pass texture and normal to frag
 	texCoord = inTexCoord;
-
-	// Normal calculations
-	mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
-	exNormal = normalMatrix * inNormal;
+	exNormal = inNormal;
 
 	// Calculate transformations
 	gl_Position = projMatrix * viewMatrix * modelMatrix * placeDowns *vec4(inPosition, 1.0);
+	
+	//surf = inPosition; 
 }
