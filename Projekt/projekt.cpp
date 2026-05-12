@@ -371,13 +371,26 @@ void init(void)
 	
 	// Set up ghost
 	std::vector<vec3> path = {
-        {8.0f, 1.0f, 20.0f},
-        {10.0f, 1.0f, 20.0f},
-        {8.0f, 1.0f, 17.0f}
+		//corner room - start
+		{4.0f, 1.0f, 7.0f}, 
+    	{3.0f, 1.0f, 7.0f},
+      	{4.6f, 1.0f, 10.0f},
+		{5.04f, 1.80f, 11.25f},
+		//bed room
+		{5.09f, 1.83f, 14.65f}, 
+		{5.04f, 1.80f, 11.25f}, 
+		//Living room
+		{6.76f, 1.80f, 12.05f}, 
+		{6.59f, 1.80f, 6.10f},
+		{8.38f, 1.80f, 6.22f}, 
+		{8.38f, 1.80f, 12.00f},
+		
+		
+	    
     };
     
     // Set up the ghost: Start Pos, Speed, Path
-    initGhost(vec3(8.0f, 1.0f, 20.0f), 1.0f, path);
+    initGhost(vec3(4, 1, 7), 1.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 }
