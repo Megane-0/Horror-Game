@@ -528,14 +528,16 @@ void renderScene(mat4 viewMatrix, float deltaTime)
         glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
         DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
     }
-	/*
+	
+	// remove this comment to see ghost
     // ghost
+	/*
     glBindTexture(GL_TEXTURE_2D, tex3);
     mat4 ghostMatrix = getGhostMoveMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
     DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-	
 	*/
+	
     // terrain
     glBindTexture(GL_TEXTURE_2D, tex1);
     mat4 placeDowns = mat4(1.0);
@@ -640,15 +642,10 @@ void display(void)
 
 	// ** Teapot drawn normally - after the mirror!
 	glDisable(GL_STENCIL_TEST);
-	glBindTexture(GL_TEXTURE_2D, tex3);
-	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
-	trans = T(gGhostPos.x, gGhostPos.y, gGhostPos.z);
-	mv2 = view * trans;
-	ghostMatrix = getGhostMoveMatrix();
-    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
-	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
-	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+	
 
+
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	renderScene(view, deltaTime);
     glutSwapBuffers();
 }
