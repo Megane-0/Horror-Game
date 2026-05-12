@@ -47,6 +47,100 @@ mat4 mirrorMatrix;
 
 vec3 mirrorPoint = vec3(8.0f, 12.0f, 10.0f);
 vec3 mirrorNormal = vec3(0, 0, 1); // facing +Z
+unsigned int max(float a, float b) {
+
+	if (a >= b) {
+		return a;
+	} else {
+		return b;
+	}
+}
+
+unsigned int min(float a, float b) {
+
+	if (a <= b) {
+		return a;
+	} else {
+		return b;
+	}
+}
+float vecLength(vec3 value)
+{
+	return sqrt(dot(value, value));
+}
+Model* GenerateTerrain(TextureData *tex)
+{
+	int vertexCount = tex->width * tex->height;
+	int triangleCount = (tex->width-1) * (tex->height-1) * 2;
+	int x, z;
+	
+	vertexArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
+	vec3 *normalArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
+	vec2 *texCoordArray = (vec2 *)malloc(sizeof(GLfloat) * 2 * vertexCount);
+	GLuint *indexArray = (GLuint *) malloc(sizeof(GLuint) * triangleCount*3);
+	
+	printf("bpp %d\n", tex->bpp);
+	for (x = 0; x < tex->width; x++)
+		for (z = 0; z < tex->height; z++)
+		{
+
+			vertexArray[(x + z * tex->width)].x = x / 5.0;
+			//vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
+			vertexArray[(x + z * tex->width)].y = 0.0f; // Flaten terrain
+			vertexArray[(x + z * tex->width)].z = z / 5.0;
+
+			// Texture coordinates. You may want to scale them.
+			texCoordArray[(x + z * tex->width)].x = x; // (float)x / tex->width;
+			texCoordArray[(x + z * tex->width)].y = z; // (float)z / tex->height;
+			
+			normalArray[(x + z * tex->width)] = vec3(0.0f, 1.0f, 0.0f); // uppåt-normals
+
+		}
+			
+	for (x = 0; x < tex->width; x++)
+			for (z = 0; z < tex->height; z++)
+			{
+			// Normal vectors. we need to calculate these.
+			vec3 vUp = vertexArray[(x + max((z-1), 0)* tex->width)];
+			vec3 vDown = vertexArray[(x + min((z+1), tex->height-1)* tex->width)];
+			vec3 vLeft = vertexArray[(max((x-1), 0) + z* tex->width)];
+			vec3 vRight = vertexArray[(min((x+1), tex->width-1) + z* tex->width)];
+			
+			vec3 vNorm = cross((vUp-vDown), (vRight-vLeft));
+
+			normalArray[(x + z * tex->width)] = vNorm;
+			//printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
+	}
+
+	
+	for (x = 0; x < tex->width-1; x++)
+		for (z = 0; z < tex->height-1; z++)
+		{
+			// Triangle 1
+			indexArray[(x + z * (tex->width-1))*6 + 0] = x + z * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 1] = x + (z+1) * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 2] = x+1 + z * tex->width;
+			// Triangle 2
+			indexArray[(x + z * (tex->width-1))*6 + 3] = x+1 + z * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 4] = x + (z+1) * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 5] = x+1 + (z+1) * tex->width;
+
+		}
+	// End of terrain generation
+	
+	// Create Model and upload to GPU:
+
+	Model* model = LoadDataToModel(
+			vertexArray,
+			normalArray,
+			texCoordArray,
+			NULL,
+			indexArray,
+			vertexCount,
+			triangleCount*3);
+
+	return model;
+}
 
 
 void loadShader(){
@@ -127,27 +221,7 @@ vec3 reflectVector(vec3 v, vec3 n)
     return v - 2.0f * dot(v, n) * n;
 }
 
-unsigned int max(float a, float b) {
 
-	if (a >= b) {
-		return a;
-	} else {
-		return b;
-	}
-}
-
-unsigned int min(float a, float b) {
-
-	if (a <= b) {
-		return a;
-	} else {
-		return b;
-	}
-}
-float vecLength(vec3 value)
-{
-	return sqrt(dot(value, value));
-}
 
 vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 p)
 {
@@ -254,80 +328,6 @@ bool modelCollision(Model* model, vec3 cam, float r, mat4 modelMatrix)
 
 	return false;
 }
-Model* GenerateTerrain(TextureData *tex)
-{
-	int vertexCount = tex->width * tex->height;
-	int triangleCount = (tex->width-1) * (tex->height-1) * 2;
-	int x, z;
-	
-	vertexArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
-	vec3 *normalArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
-	vec2 *texCoordArray = (vec2 *)malloc(sizeof(GLfloat) * 2 * vertexCount);
-	GLuint *indexArray = (GLuint *) malloc(sizeof(GLuint) * triangleCount*3);
-	
-	printf("bpp %d\n", tex->bpp);
-	for (x = 0; x < tex->width; x++)
-		for (z = 0; z < tex->height; z++)
-		{
-
-			vertexArray[(x + z * tex->width)].x = x / 5.0;
-			//vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
-			vertexArray[(x + z * tex->width)].y = 0.0f; // Flaten terrain
-			vertexArray[(x + z * tex->width)].z = z / 5.0;
-
-			// Texture coordinates. You may want to scale them.
-			texCoordArray[(x + z * tex->width)].x = x; // (float)x / tex->width;
-			texCoordArray[(x + z * tex->width)].y = z; // (float)z / tex->height;
-			
-			normalArray[(x + z * tex->width)] = vec3(0.0f, 1.0f, 0.0f); // uppåt-normals
-
-		}
-			
-	for (x = 0; x < tex->width; x++)
-			for (z = 0; z < tex->height; z++)
-			{
-			// Normal vectors. we need to calculate these.
-			vec3 vUp = vertexArray[(x + max((z-1), 0)* tex->width)];
-			vec3 vDown = vertexArray[(x + min((z+1), tex->height-1)* tex->width)];
-			vec3 vLeft = vertexArray[(max((x-1), 0) + z* tex->width)];
-			vec3 vRight = vertexArray[(min((x+1), tex->width-1) + z* tex->width)];
-			
-			vec3 vNorm = cross((vUp-vDown), (vRight-vLeft));
-
-			normalArray[(x + z * tex->width)] = vNorm;
-			//printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
-	}
-
-	
-	for (x = 0; x < tex->width-1; x++)
-		for (z = 0; z < tex->height-1; z++)
-		{
-			// Triangle 1
-			indexArray[(x + z * (tex->width-1))*6 + 0] = x + z * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 1] = x + (z+1) * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 2] = x+1 + z * tex->width;
-			// Triangle 2
-			indexArray[(x + z * (tex->width-1))*6 + 3] = x+1 + z * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 4] = x + (z+1) * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 5] = x+1 + (z+1) * tex->width;
-
-		}
-	// End of terrain generation
-	
-	// Create Model and upload to GPU:
-
-	Model* model = LoadDataToModel(
-			vertexArray,
-			normalArray,
-			texCoordArray,
-			NULL,
-			indexArray,
-			vertexCount,
-			triangleCount*3);
-
-	return model;
-}
-
 
 void init(void)
 {
