@@ -356,32 +356,9 @@ void init(void)
     };
     
     // Set up the ghost: Start Pos, Speed, Path
-    initGhost(vec3(8.0f, 12.0f, 14.0f), 0.0f, path);
+    initGhost(vec3(8.0f, 1.0f, 20.0f), 0.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
-	//mirror
-	/*
-	vec3 mirrorVertices[] = {
-    vec3(-1, 0, 0),
-    vec3( 1, 0, 0),
-    vec3( 1, 2, 0),
-    vec3(-1, 2, 0)
-	};
-
-	GLuint mirrorIndices[] = {
-		0,1,2,
-		2,3,0
-	};
-	mirrorQuad = LoadDataToModel(
-		mirrorVertices,
-		NULL,
-		NULL,
-		NULL,
-		mirrorIndices,
-		4,
-		6
-	);
-	mirrorMatrix = T(8.0f, 12.0f, 10.0f);*/
 }
 
 float getLength(vec2 p1, vec2 p2){
@@ -468,7 +445,7 @@ void renderScene(mat4 viewMatrix, float deltaTime)
 
     mat4 modelToWorld = IdentityMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
-
+	/*
     // housee 
     vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
     housePos.y = getHeight(housePos.x, housePos.z);
@@ -517,17 +494,16 @@ void renderScene(mat4 viewMatrix, float deltaTime)
         glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
         DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
     }
-
+	*/
     // ghost
     glBindTexture(GL_TEXTURE_2D, tex3);
-
     mat4 ghostMatrix = getGhostMoveMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
     DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-
+	
+	
     // terrain
     glBindTexture(GL_TEXTURE_2D, tex1);
-
     mat4 placeDowns = mat4(1.0);
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
     DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
@@ -535,8 +511,8 @@ void renderScene(mat4 viewMatrix, float deltaTime)
 void display(void)
 {
 	mat4 mv2, tx2, trans;
-
     
+
     static float lastTime = 0;
     float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
     float deltaTime = currentTime - lastTime;
@@ -554,8 +530,13 @@ void display(void)
     mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
 
     handleCollision(houseMatrix, lastCameraPosition);
-	mat4 view = camera.getViewMatrix();
-    // render
+    mat4 view = camera.getViewMatrix();
+    
+	//Upload modelmatrix not used for ghost and terrain
+	mat4 modelToWorld = IdentityMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
+	
+	// RENDER SCENE
 	glUseProgram(program);
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	glUniformMatrix4fv(glGetUniformLocation(program, "projectionMatrix"), 1, GL_TRUE, projectionMatrix.m);
@@ -567,12 +548,11 @@ void display(void)
 	// 4. Draw the ground with some transparency, to make the mirrored geometry visible
 	// 5. Draw the teapot in a position matching the mirrored one
 	
-	// Start of interesting stuff: Clear stencil, then set up to draw in it.
 	glClearColor(0,0.1,0.3,1.0f); // Not black - we want to see if the mirrored image is drawn outside the plane!
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear Screen, Depth Buffer and Stencil Buffer
 	glClearStencil(2); // No, stencil must be set to 2 outside the plane or it will draw double shadows there!
 	
-	// ** Ground in stencil
+		// ** Ground in stencil
 	glEnable(GL_STENCIL_TEST);
 	glStencilFunc(GL_ALWAYS, 1, 0xFFFFFFFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Write 1 if pass! Otherwise keep! Don't draw in invisible areas.
@@ -581,12 +561,76 @@ void display(void)
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	glDepthMask(GL_FALSE);
 	
-	glBindTexture(GL_TEXTURE_2D, tex1); // maskros
-	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
-	DrawModel(tm, program, "inPosition", NULL, "inTexCoord");
 	
-    //renderScene(view, deltaTime);
+    glBindTexture(GL_TEXTURE_2D, tex1);
+    mat4 placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+    glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
+
+	// ** Teapot mirrored - with stencil!
+
+	// Turn on Color Buffer and Depth Buffer
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDepthMask(GL_TRUE);
+	
+	glEnable(GL_STENCIL_TEST); // Try disabling this!
+	glStencilFunc(GL_EQUAL, 1, 0xFFFFFFFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_INCR); // Skriv 1 om pass! Annars keep! Vi vill inte rita i osynlig yta!
+	glCullFace(GL_FRONT); // Since the teapot is mirrored, culling must be reversed
+
+	mat4 sm = S(1, -1, 1);
+	sm = sm * T(gGhostPos.x, gGhostPos.y, gGhostPos.z); // Place ghost before projecting (that is to the right)
+	mv2 = view * sm;
+	glBindTexture(GL_TEXTURE_2D, tex3);
+	mat4 ghostMatrix = getGhostMoveMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "projectionMatrix"), 1, GL_TRUE, projectionMatrix.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, mv2.m);
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
+	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+	//DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+	
+	// ** Ground in image
+	glDisable(GL_STENCIL_TEST);
+	glCullFace(GL_BACK); // Standard culling
+	
+	glBindTexture(GL_TEXTURE_2D, tex1);
+	glUniform1f(glGetUniformLocation(program, "blend"), 0.7); // Blend value
+	placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+    DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+	//DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+
+	// ** Teapot drawn normally - after the mirror!
+	glDisable(GL_STENCIL_TEST);
+	glBindTexture(GL_TEXTURE_2D, tex3);
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
+	trans = T(gGhostPos.x, gGhostPos.y, gGhostPos.z);
+	mv2 = view * trans;
+	ghostMatrix = getGhostMoveMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, mv2.m);
+	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+	//DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+    
+	/*
+	// __________________________DRAW GROUND AND GHOST______________________-
+	// ghost
+    glBindTexture(GL_TEXTURE_2D, tex3);
+    mat4 ghostMatrix = getGhostMoveMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
+    DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+	
+	
+    // terrain
+    glBindTexture(GL_TEXTURE_2D, tex1);
+    mat4 placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+    DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+	*/
     glutSwapBuffers();
 }
 
@@ -664,6 +708,8 @@ int main(int argc, char **argv)
 	glutInitWindowSize (1024, 768);
 
 	glutCreateWindow ("TSBK07 PROJEKT");
+	
+	// Load shaders, textures and objects
 	loadShader();
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -671,12 +717,13 @@ int main(int argc, char **argv)
 	loadObjects();
 
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(0,0,0,1.0f);
+	glClearColor(0.4,0.6,0.9,0);
 	glEnable(GL_CULL_FACE);
 
 	//glutFullScreen();
-	glutDisplayFunc(display);
 	init ();
+	glutDisplayFunc(display);
+	
 	glutHideCursor();
 	glutRepeatingTimer(20);
 	
