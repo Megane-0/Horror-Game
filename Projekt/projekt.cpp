@@ -42,6 +42,8 @@ vec3 lightColor = vec3(1.0f, 0.95f, 0.8f);
 float doorSpeed = 2.5f;          
 std::vector<Door> doors;
 
+bool ghostCollisionTriggered = false;
+
 Model *mirrorModel;
 vec3 mirror[] = {
 	vec3(-1, -1,0),
@@ -387,9 +389,26 @@ void init(void)
 		
 		
 	    
+		//corner room - start
+		{4.0f, 1.0f, 7.0f}, 
+    	{3.0f, 1.0f, 7.0f},
+      	{4.6f, 1.0f, 10.0f},
+		{5.04f, 1.80f, 11.25f},
+		//bed room
+		{5.09f, 1.83f, 14.65f}, 
+		{5.04f, 1.80f, 11.25f}, 
+		//Living room
+		{6.76f, 1.80f, 12.05f}, 
+		{6.59f, 1.80f, 6.10f},
+		{8.38f, 1.80f, 6.22f}, 
+		{8.38f, 1.80f, 12.00f},
+		
+		
+	    
     };
     
     // Set up the ghost: Start Pos, Speed, Path
+    initGhost(vec3(4, 1, 7), 1.0f, path);
     initGhost(vec3(4, 1, 7), 1.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
@@ -448,7 +467,10 @@ float getHeight(float x, float z) {
 		return barycentricHeight(p1, p4, p2, x, z);
 	}
 }
-
+void onGhostCollision() {
+	camera.setPosition(vec3(7.0f, 1.0f, 18.0f)); 
+	printf("The ghost has collided with you!\n");
+}
 void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 {
 	bool colliding = false;
@@ -457,20 +479,45 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 
 	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.5f))
 	{
-		printf("Collision!\n");
-		colliding = true;
+		if (!ghostCollisionTriggered)
+        {
+            onGhostCollision();
+            ghostCollisionTriggered = true;
+        }
+        //colliding = true;
 	}
-	else if (modelCollision(modelWall, cam, camera.cameraRadius, houseMatrix))
+
+	else
+    {
+        ghostCollisionTriggered = false;
+    }
+
+	if (modelCollision(modelWall, cam, camera.cameraRadius, houseMatrix))
 	{
-		//printf("House Collision\n");
+		printf("House Collision\n");
 		colliding = true;
 	}
+
+    for (int i = 0; i < doors.size(); i++) {
+        
+        mat4 doorMatrix = Mult(houseMatrix,
+            Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
+            Mult(Ry(doors[i].angle),
+                T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
+
+        if (modelCollision(doors[i].model, cam, camera.cameraRadius, doorMatrix))
+        {
+            printf("Door Collision!\n");
+            colliding = true;
+        }
+    }
 
 	if (colliding)
 	{
 		camera.setPosition(lastCameraPosition);
 	}
 }
+
 
 void renderScene(mat4 viewMatrix, float deltaTime)
 {
@@ -513,6 +560,11 @@ void renderScene(mat4 viewMatrix, float deltaTime)
     // doors
     glBindTexture(GL_TEXTURE_2D, texDoor);
 
+
+    for (int i = 0; i < doors.size(); i++) {
+
+		
+        // (Animation)
     for (int i = 0; i < doors.size(); i++)
     {
         // animation 
@@ -544,12 +596,9 @@ void renderScene(mat4 viewMatrix, float deltaTime)
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
     DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 	
-}
+}}
 void display(void)
 {
-	mat4 mv2, tx2, trans;
-    
-
     static float lastTime = 0;
     float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
     float deltaTime = currentTime - lastTime;
@@ -589,7 +638,7 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear Screen, Depth Buffer and Stencil Buffer
 	glClearStencil(2); // No, stencil must be set to 2 outside the plane or it will draw double shadows there!
 	
-		// ** Ground in stencil
+	// ** Mirror in stencil
 	glEnable(GL_STENCIL_TEST);
 	glStencilFunc(GL_ALWAYS, 1, 0xFFFFFFFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Write 1 if pass! Otherwise keep! Don't draw in invisible areas.
@@ -606,7 +655,7 @@ void display(void)
 	DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
 
 
-	// ** Teapot mirrored - with stencil!
+	// ** Ghost mirrored - with stencil!
 
 	// Turn on Color Buffer and Depth Buffer
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -629,7 +678,7 @@ void display(void)
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
 
-	// ** Ground in image
+	// ** Mirror in image
 	glDisable(GL_STENCIL_TEST);
 	glCullFace(GL_BACK); // Standard culling
 	
@@ -640,11 +689,9 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
     DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
 
-	// ** Teapot drawn normally - after the mirror!
-	glDisable(GL_STENCIL_TEST);
 	
-
-
+	glDisable(GL_STENCIL_TEST);
+	// Rest of the scene drawn normally
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	renderScene(view, deltaTime);
     glutSwapBuffers();
@@ -667,6 +714,7 @@ void mouseClick(int button, int state, int x, int y){
     {
         // Find closest door to camera
         vec3 camPos = camera.getPosition();
+		//printf("Camera position: (%.2f, %.2f, %.2f)\n", camPos.x, camPos.y, camPos.z);
 		
 		// House position (same as in display())
 		vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
@@ -690,15 +738,13 @@ void mouseClick(int button, int state, int x, int y){
             {
                 closestDist = dist;
                 closestDoorIdx = (int)i;
-                printf("Door %zu at world pos (%.2f, %.2f, %.2f), distance: %.2f\n", 
-                       i, doorWorldPos.x, doorWorldPos.y, doorWorldPos.z, dist);
+
             }
         }
 
         // Toggle only the closest door
         if (closestDoorIdx >= 0)
         {
-            printf("Toggling door %d\n", closestDoorIdx);
             if (fabs(doors[closestDoorIdx].angle - doors[closestDoorIdx].targetAngle) < 0.01f)
             {
                 if (doors[closestDoorIdx].targetAngle < 0.1f)
