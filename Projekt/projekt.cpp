@@ -44,10 +44,10 @@ std::vector<Door> doors;
 
 Model *mirrorModel;
 vec3 mirror[] = {
-	vec3(-2, -2,0),
-	vec3(-2, 2, 0),
-	vec3( 2, 2, 0),
-	vec3( 2, -2, 0)
+	vec3(-1, -1,0),
+	vec3(-1, 1, 0),
+	vec3( 1, 1, 0),
+	vec3( 1, -1, 0)
 };
 vec2 mirrortex[] = {
 		vec2(-1,-1),
@@ -371,13 +371,13 @@ void init(void)
 	
 	// Set up ghost
 	std::vector<vec3> path = {
-        {10.0f, 10.0f, 0.0f},
-        {10.0f, 10.0f, 10.0f},
-        {5.0f, 10.0f, 5.0f}
+        {8.0f, 1.0f, 20.0f},
+        {10.0f, 1.0f, 20.0f},
+        {8.0f, 1.0f, 17.0f}
     };
     
     // Set up the ghost: Start Pos, Speed, Path
-    initGhost(vec3(8.0f, 1.0f, 20.0f), 0.0f, path);
+    initGhost(vec3(8.0f, 1.0f, 20.0f), 1.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 }
@@ -557,7 +557,7 @@ void display(void)
 	//Upload modelmatrix not used for ghost and terrain
 	mat4 modelToWorld = IdentityMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
-	mat4 mirrorMatrix = Mult(T(8.0f, 3.0f, 17.0f), Ry(M_PI)); // place mirror
+	mat4 mirrorMatrix = Mult(T(7.5f, 1.5f, 6.0f), Ry(M_PI)); // place mirror
 	// RENDER SCENE
 	glUseProgram(program);
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
@@ -603,13 +603,9 @@ void display(void)
 	glCullFace(GL_FRONT); // Since the teapot is mirrored, culling must be reversed
 
 	mat4 reflectMatrix =
-    T(8.0f, 3.0f, 17.0f) *
-    Ry(M_PI) *
-    S(1.0f, 1.0f, -1.0f) *
-    Ry(-M_PI) *
-    T(-8.0f, -3.0f, -17.0f);
+    T(7.5f, 1.5f, 6.0f) *Ry(M_PI) *S(1.0f, 1.0f, -1.0f) *Ry(-M_PI) *T(-7.5f, -1.5f, -6.0f);
 
-mat4 ghostMatrix = reflectMatrix * getGhostMoveMatrix();
+	mat4 ghostMatrix = reflectMatrix * getGhostMoveMatrix();
 	glBindTexture(GL_TEXTURE_2D, tex3);
 	
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
@@ -617,8 +613,7 @@ mat4 ghostMatrix = reflectMatrix * getGhostMoveMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-	//DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-	
+
 	// ** Ground in image
 	glDisable(GL_STENCIL_TEST);
 	glCullFace(GL_BACK); // Standard culling
@@ -629,7 +624,6 @@ mat4 ghostMatrix = reflectMatrix * getGhostMoveMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
     DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
-	//DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
 	// ** Teapot drawn normally - after the mirror!
 	glDisable(GL_STENCIL_TEST);
@@ -641,23 +635,7 @@ mat4 ghostMatrix = reflectMatrix * getGhostMoveMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
 	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-	//DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-    
-	/*
-	// __________________________DRAW GROUND AND GHOST______________________-
-	// ghost
-    glBindTexture(GL_TEXTURE_2D, tex3);
-    mat4 ghostMatrix = getGhostMoveMatrix();
-    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
-    DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-	
-	
-    // terrain
-    glBindTexture(GL_TEXTURE_2D, tex1);
-    mat4 placeDowns = mat4(1.0);
-    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-    DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
-	*/
+
 	renderScene(view, deltaTime);
     glutSwapBuffers();
 }
@@ -719,7 +697,11 @@ void mouseClick(int button, int state, int x, int y){
                     doors[closestDoorIdx].targetAngle = 0.0f;
             }
         }
+		vec3 pos = camera.getPosition();
+		printf("vec3(%2f, %2f, %2f)\n", pos.x, pos.y,pos.z);
+
     }
+
 }
 
 void processNormalKeys(unsigned char key, int x, int y)
