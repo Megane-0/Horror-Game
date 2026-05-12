@@ -27,7 +27,7 @@ Model *m, *m2, *tm, *sphere, *ghost;
 Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor, *modelWindow, *modelFurnitues;
 // Reference to shader program
 GLuint program;
-GLuint tex1, tex2, tex3;
+GLuint tex1, tex2, tex3, tex4; // tex4 for mirror
 GLuint texWall, texFloor, texDoor, texCeiling, texWindow; // House textures
 TextureData ttex; // terrain
 vec3 *vertexArray;
@@ -42,11 +42,22 @@ vec3 lightColor = vec3(1.0f, 0.95f, 0.8f);
 float doorSpeed = 2.5f;          
 std::vector<Door> doors;
 
-Model* mirrorQuad;
-mat4 mirrorMatrix;
+Model *mirrorModel;
+vec3 mirror[] = {
+	vec3(-2, -2,0),
+	vec3(-2, 2, 0),
+	vec3( 2, 2, 0),
+	vec3( 2, -2, 0)
+};
+vec2 mirrortex[] = {
+		vec2(-1,-1),
+		vec2(-1, 1),
+		vec2( 1, 1),
+		vec2( 1,-1)
+		};
+GLuint mirrorIndices[] = {0, 1, 2, 0, 2, 3};
 
-vec3 mirrorPoint = vec3(8.0f, 12.0f, 10.0f);
-vec3 mirrorNormal = vec3(0, 0, 1); // facing +Z
+
 unsigned int max(float a, float b) {
 
 	if (a >= b) {
@@ -149,6 +160,7 @@ void loadShader(){
 void loadTextures(){
 	LoadTGATextureSimple("maskros512.tga", &tex1);
 	LoadTGATextureSimple("ghost_texture.tga", &tex3);
+	LoadTGATextureSimple("maskros512.tga", &tex4);
 	//LoadTGATextureSimple("44-terrain.tga", &tex2);
 	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
 	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
@@ -159,6 +171,15 @@ void loadTextures(){
 	LoadTGATextureData("fft-terrain.tga", &ttex);
 }
 void loadObjects(){
+	mirrorModel = LoadDataToModel(
+			mirror,
+			NULL,
+			mirrortex,
+			NULL,
+			mirrorIndices,
+			4,
+			6);
+
 	tm = GenerateTerrain(&ttex);
 	modelWall= LoadModel("house-objects/walls.obj");
 	modelFloor = LoadModel("house-objects/floor.obj");
@@ -445,7 +466,7 @@ void renderScene(mat4 viewMatrix, float deltaTime)
 
     mat4 modelToWorld = IdentityMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
-	/*
+	
     // housee 
     vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
     housePos.y = getHeight(housePos.x, housePos.z);
@@ -494,19 +515,20 @@ void renderScene(mat4 viewMatrix, float deltaTime)
         glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
         DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
     }
-	*/
+	/*
     // ghost
     glBindTexture(GL_TEXTURE_2D, tex3);
     mat4 ghostMatrix = getGhostMoveMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
     DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
 	
-	
+	*/
     // terrain
     glBindTexture(GL_TEXTURE_2D, tex1);
     mat4 placeDowns = mat4(1.0);
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
     DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+	
 }
 void display(void)
 {
@@ -535,7 +557,7 @@ void display(void)
 	//Upload modelmatrix not used for ghost and terrain
 	mat4 modelToWorld = IdentityMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
-	
+	mat4 mirrorMatrix = Mult(T(8.0f, 3.0f, 25.0f), Ry(M_PI)); // place mirror
 	// RENDER SCENE
 	glUseProgram(program);
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
@@ -564,9 +586,9 @@ void display(void)
 	
     glBindTexture(GL_TEXTURE_2D, tex1);
     mat4 placeDowns = mat4(1.0);
-    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);
     glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
-	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+	DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
 
 
 	// ** Teapot mirrored - with stencil!
@@ -580,7 +602,7 @@ void display(void)
 	glStencilOp(GL_KEEP, GL_KEEP, GL_INCR); // Skriv 1 om pass! Annars keep! Vi vill inte rita i osynlig yta!
 	glCullFace(GL_FRONT); // Since the teapot is mirrored, culling must be reversed
 
-	mat4 sm = S(1, -1, 1);
+	mat4 sm = S(1, 1, -1);
 	sm = sm * T(gGhostPos.x, gGhostPos.y, gGhostPos.z); // Place ghost before projecting (that is to the right)
 	mv2 = view * sm;
 	glBindTexture(GL_TEXTURE_2D, tex3);
@@ -599,9 +621,9 @@ void display(void)
 	glBindTexture(GL_TEXTURE_2D, tex1);
 	glUniform1f(glGetUniformLocation(program, "blend"), 0.7); // Blend value
 	placeDowns = mat4(1.0);
-    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
-    DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+    DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
 	//DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
 	// ** Teapot drawn normally - after the mirror!
@@ -631,6 +653,7 @@ void display(void)
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
     DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 	*/
+	renderScene(view, deltaTime);
     glutSwapBuffers();
 }
 
