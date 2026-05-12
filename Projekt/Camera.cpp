@@ -11,7 +11,7 @@ Camera::Camera()
     horizontalAngle = 3.14; //3.14
     verticalAngle = 0.0f;
 
-    speed = 5.0f;
+    speed = 2.0f;
     cameraHeight = 1.8f;
     cameraRadius = 0.35f;
 }

@@ -48,6 +48,79 @@ mat4 mirrorMatrix;
 vec3 mirrorPoint = vec3(8.0f, 12.0f, 10.0f);
 vec3 mirrorNormal = vec3(0, 0, 1); // facing +Z
 
+
+void loadShader(){
+	program = loadShaders("projekt.vert", "projekt.frag");
+}
+void loadTextures(){
+	LoadTGATextureSimple("maskros512.tga", &tex1);
+	LoadTGATextureSimple("ghost_texture.tga", &tex3);
+	//LoadTGATextureSimple("44-terrain.tga", &tex2);
+	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
+	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
+	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texDoor); // TODO: Separate door texture
+	LoadTGATextureSimple("house-objects/house-textures/shatteredglass.tga", &texWindow);
+	
+	LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
+	LoadTGATextureData("fft-terrain.tga", &ttex);
+}
+void loadObjects(){
+	tm = GenerateTerrain(&ttex);
+	modelWall= LoadModel("house-objects/walls.obj");
+	modelFloor = LoadModel("house-objects/floor.obj");
+	modelCeiling = LoadModel("house-objects/ceiling.obj");
+	modelFrames = LoadModel("house-objects/frames.obj");
+
+	modelWindow = LoadModel("house-objects/windowFixed.obj");
+
+	modelFurnitues = LoadModel("house-objects/furniture.obj");
+	
+
+	// Door 1: Main entrance
+    Door d1;
+    d1.model = LoadModel("house-objects/door_main_entrance.obj");
+    d1.pivot = vec3(-2.81285f, 1.0f, 5.54151f); 
+	//d1.pivot = vec3(-3.1285f, 1.0f, 5.56151f); 
+    d1.angle = 0.0f;
+    d1.targetAngle = 0.0f;
+    doors.push_back(d1);
+
+
+    Door d2;
+    d2.model = LoadModel("house-objects/door_2.obj");
+    d2.pivot = vec3(-2.7f, 1.0f, 2.66f);
+    d2.angle = 0.0f;
+    d2.targetAngle = 0.0f;
+    doors.push_back(d2);
+
+	Door d3;
+	d3.model = LoadModel("house-objects/door_3.obj");
+	d3.pivot = vec3(-4.5f, 1.0f, 2.76f);
+	d3.angle = 0.0f;
+	d3.targetAngle = 0.0f;
+	doors.push_back(d3);
+
+	Door d4;
+	d4.model = LoadModel("house-objects/door_4.obj");
+	d4.pivot = vec3(-6.46f, 1.0f, 2.76f);
+	d4.angle = 0.0f;
+	d4.targetAngle = 0.0f;
+	doors.push_back(d4);
+
+	Door d5;
+	d5.model = LoadModel("house-objects/door_5.obj");
+	d5.pivot = vec3(0.278f, 1.0f, -0.482103f);
+	d5.angle = 0.0f;
+	d5.targetAngle = 0.0f;
+	doors.push_back(d5);
+
+
+	// load ghost model
+	ghost = LoadModel("ghost.obj");
+
+
+}
+
 // helper for mirrors
 vec3 reflectVector(vec3 v, vec3 n)
 {
@@ -258,16 +331,9 @@ Model* GenerateTerrain(TextureData *tex)
 
 void init(void)
 {
-	// GL inits
-	glClearColor(0.4,0.6,0.9,0);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	printError("GL inits");
-	glutHideCursor();
 	projectionMatrix = frustum(-0.1, 0.1, -0.1, 0.1, 0.2, 5000.0);
 	glutWarpPointer(1024/2, 768/2);
 	// Load and compile shader
-	program = loadShaders("projekt.vert", "projekt.frag");
 	glUseProgram(program);
 	printError("init shader");
 	
@@ -276,18 +342,6 @@ void init(void)
 	// Upload light parameters
 	glUniform3fv(glGetUniformLocation(program, "lightPos"), 1, &lightPos.x);
 	glUniform3fv(glGetUniformLocation(program, "lightColor"), 1, &lightColor.x);
-	
-
-
-	LoadTGATextureSimple("maskros512.tga", &tex1);
-	LoadTGATextureSimple("ghost_texture.tga", &tex3);
-	//LoadTGATextureSimple("44-terrain.tga", &tex2);
-	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
-	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
-	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texDoor); // TODO: Separate door texture
-	LoadTGATextureSimple("house-objects/house-textures/shatteredglass.tga", &texWindow);
-	
-	LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex1);		// Bind Our Texture tex1
@@ -296,67 +350,6 @@ void init(void)
 
 	glUniform1i(glGetUniformLocation(program, "tex1"), 0); // Texture unit 0
 	
-
-
-
-	modelWall= LoadModel("house-objects/walls.obj");
-	modelFloor = LoadModel("house-objects/floor.obj");
-	modelCeiling = LoadModel("house-objects/ceiling.obj");
-	modelFrames = LoadModel("house-objects/frames.obj");
-
-	modelWindow = LoadModel("house-objects/windowFixed.obj");
-
-	modelFurnitues = LoadModel("house-objects/furniture.obj");
-	
-
-	// Door 1: Main entrance
-    Door d1;
-    d1.model = LoadModel("house-objects/door_main_entrance.obj");
-    d1.pivot = vec3(-2.81285f, 1.0f, 5.54151f); 
-	//d1.pivot = vec3(-3.1285f, 1.0f, 5.56151f); 
-    d1.angle = 0.0f;
-    d1.targetAngle = 0.0f;
-    doors.push_back(d1);
-
-
-    Door d2;
-    d2.model = LoadModel("house-objects/door_2.obj");
-    d2.pivot = vec3(-2.7f, 1.0f, 2.66f);
-    d2.angle = 0.0f;
-    d2.targetAngle = 0.0f;
-    doors.push_back(d2);
-
-	Door d3;
-	d3.model = LoadModel("house-objects/door_3.obj");
-	d3.pivot = vec3(-4.5f, 1.0f, 2.76f);
-	d3.angle = 0.0f;
-	d3.targetAngle = 0.0f;
-	doors.push_back(d3);
-
-	Door d4;
-	d4.model = LoadModel("house-objects/door_4.obj");
-	d4.pivot = vec3(-6.46f, 1.0f, 2.76f);
-	d4.angle = 0.0f;
-	d4.targetAngle = 0.0f;
-	doors.push_back(d4);
-
-	Door d5;
-	d5.model = LoadModel("house-objects/door_5.obj");
-	d5.pivot = vec3(0.278f, 1.0f, -0.482103f);
-	d5.angle = 0.0f;
-	d5.targetAngle = 0.0f;
-	doors.push_back(d5);
-
-
-	// load ghost model
-	ghost = LoadModel("ghost.obj");
-	
-	// Load terrain data
-	LoadTGATextureData("fft-terrain.tga", &ttex);
-	tm = GenerateTerrain(&ttex);
-	printError("init terrain");
-
-
 	// Set up ghost
 	std::vector<vec3> path = {
         {10.0f, 10.0f, 0.0f},
@@ -369,7 +362,7 @@ void init(void)
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 	//mirror
-
+	/*
 	vec3 mirrorVertices[] = {
     vec3(-1, 0, 0),
     vec3( 1, 0, 0),
@@ -390,7 +383,7 @@ void init(void)
 		4,
 		6
 	);
-	mirrorMatrix = T(8.0f, 12.0f, 10.0f);
+	mirrorMatrix = T(8.0f, 12.0f, 10.0f);*/
 }
 
 float getLength(vec2 p1, vec2 p2){
@@ -469,6 +462,7 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 		camera.setPosition(lastCameraPosition);
 	}
 }
+
 void renderScene(mat4 viewMatrix, float deltaTime)
 {
 	
@@ -539,8 +533,6 @@ void renderScene(mat4 viewMatrix, float deltaTime)
     mat4 placeDowns = mat4(1.0);
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
     DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
-
-	glDisable(GL_STENCIL_TEST);
 }
 void display(void)
 {
@@ -567,62 +559,6 @@ void display(void)
 
     // render
     mat4 view = camera.getViewMatrix();
-
-	vec3 camPos = camera.getPosition();
-
-	// reflect position
-	vec3 toCam = camPos - mirrorPoint;
-	vec3 reflectedPos = mirrorPoint + reflectVector(toCam, mirrorNormal);
-
-	// reflect direction vectors
-	vec3 forward = camera.getForward();
-	vec3 up = camera.getUp();
-
-	vec3 reflectedForward = reflectVector(forward, mirrorNormal);
-	vec3 reflectedUp = reflectVector(up, mirrorNormal);
-
-	mat4 reflectedView = lookAt(
-		reflectedPos,
-		reflectedPos + reflectedForward,
-		reflectedUp
-	);
-
-	glEnable(GL_STENCIL_TEST);
-
-	// 1. write 1s where mirror is
-	glStencilMask(0xFF);
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthMask(GL_FALSE);
-
-	mat4 identity = IdentityMatrix();
-	glEnable(GL_DEPTH_TEST);
-
-	// draw ONLY mirror quad into stencil
-	glUniformMatrix4fv(
-		glGetUniformLocation(program, "placeDowns"),
-		1, GL_TRUE,
-		mirrorMatrix.m
-	);
-
-	DrawModel(mirrorQuad, program, "inPosition", "inNormal", "inTexCoord");
-
-	// restore
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDepthMask(GL_TRUE);
-
-	glStencilFunc(GL_EQUAL, 1, 0xFF);
-	glStencilMask(0x00);
-	glDepthMask(GL_TRUE);
-	glEnable(GL_DEPTH_TEST);
-
-	renderScene(reflectedView, deltaTime);
-
-	glStencilMask(0xFF);
-	glDisable(GL_STENCIL_TEST);
-	// normal scene
     renderScene(view, deltaTime);
 
     glutSwapBuffers();
@@ -688,6 +624,12 @@ void mouseClick(int button, int state, int x, int y){
     }
 }
 
+void processNormalKeys(unsigned char key, int x, int y)
+{
+	if (key == 27) 
+		exit(0);
+}
+
 int main(int argc, char **argv)
 {
 	glutInit(&argc, argv);
@@ -695,14 +637,27 @@ int main(int argc, char **argv)
 	glutInitContextVersion(3, 2);
 	glutInitWindowSize (1024, 768);
 
-	glutCreateWindow ("TSBK07 Lab 4");
+	glutCreateWindow ("TSBK07 PROJEKT");
+	loadShader();
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	loadTextures();
+	loadObjects();
+
+	glEnable(GL_DEPTH_TEST);
+	glClearColor(0,0,0,1.0f);
+	glEnable(GL_CULL_FACE);
+
 	//glutFullScreen();
 	glutDisplayFunc(display);
 	init ();
-	glutRepeatingTimer(100);
+	glutHideCursor();
+	glutRepeatingTimer(20);
 	
 	glutPassiveMotionFunc(mouse);
 	glutMouseFunc(mouseClick);
+	glutKeyboardFunc(processNormalKeys);
+
 	glutMainLoop();
 	exit(0);
 }
