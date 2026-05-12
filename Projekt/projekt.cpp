@@ -221,8 +221,6 @@ vec3 reflectVector(vec3 v, vec3 n)
     return v - 2.0f * dot(v, n) * n;
 }
 
-
-
 vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 p)
 {
 	vec3 ab = b - a;
@@ -536,9 +534,9 @@ void renderScene(mat4 viewMatrix, float deltaTime)
 }
 void display(void)
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    glUseProgram(program);
+	mat4 mv2, tx2, trans;
 
+    
     static float lastTime = 0;
     float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
     float deltaTime = currentTime - lastTime;
@@ -556,10 +554,38 @@ void display(void)
     mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
 
     handleCollision(houseMatrix, lastCameraPosition);
-
+	mat4 view = camera.getViewMatrix();
     // render
-    mat4 view = camera.getViewMatrix();
-    renderScene(view, deltaTime);
+	glUseProgram(program);
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
+	glUniformMatrix4fv(glGetUniformLocation(program, "projectionMatrix"), 1, GL_TRUE, projectionMatrix.m);
+	
+	// Algorithm:
+	// 1. Clear the stencil buffer
+	// 2. Draw the ground ONLY in stencil
+	// 3. Draw the mirrored teapot (behind the ground), masked by stencil buffer
+	// 4. Draw the ground with some transparency, to make the mirrored geometry visible
+	// 5. Draw the teapot in a position matching the mirrored one
+	
+	// Start of interesting stuff: Clear stencil, then set up to draw in it.
+	glClearColor(0,0.1,0.3,1.0f); // Not black - we want to see if the mirrored image is drawn outside the plane!
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear Screen, Depth Buffer and Stencil Buffer
+	glClearStencil(2); // No, stencil must be set to 2 outside the plane or it will draw double shadows there!
+	
+	// ** Ground in stencil
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_ALWAYS, 1, 0xFFFFFFFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Write 1 if pass! Otherwise keep! Don't draw in invisible areas.
+
+	// Turn off Color Buffer and Depth Buffer
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthMask(GL_FALSE);
+	
+	glBindTexture(GL_TEXTURE_2D, tex1); // maskros
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+	DrawModel(tm, program, "inPosition", NULL, "inTexCoord");
+	
+    //renderScene(view, deltaTime);
 
     glutSwapBuffers();
 }
