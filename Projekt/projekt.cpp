@@ -173,6 +173,7 @@ void loadTextures(){
 	LoadTGATextureData("fft-terrain.tga", &ttex);
 }
 void loadObjects(){
+	
 	mirrorModel = LoadDataToModel(
 			mirror,
 			NULL,
@@ -409,7 +410,6 @@ void init(void)
     
     // Set up the ghost: Start Pos, Speed, Path
     initGhost(vec3(4, 1, 7), 1.0f, path);
-    initGhost(vec3(4, 1, 7), 1.0f, path);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
 }
@@ -565,22 +565,22 @@ void renderScene(mat4 viewMatrix, float deltaTime)
 
 		
         // (Animation)
-    for (int i = 0; i < doors.size(); i++)
-    {
-        // animation 
-        if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
-        if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
-        if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
+		for (int i = 0; i < doors.size(); i++)
+		{
+			// animation 
+			if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
+			if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
+			if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
 
-        mat4 doorMatrix = Mult(houseMatrix,
-            Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
-            Mult(Ry(doors[i].angle),
-                T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
+			mat4 doorMatrix = Mult(houseMatrix,
+				Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
+				Mult(Ry(doors[i].angle),
+					T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
 
-        glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
-        DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
-    }
-	
+			glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
+			DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
+		}
+	}
 	// remove this comment to see ghost
     // ghost
 	/*
@@ -596,7 +596,8 @@ void renderScene(mat4 viewMatrix, float deltaTime)
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
     DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 	
-}}
+
+}
 void display(void)
 {
     static float lastTime = 0;
@@ -622,6 +623,7 @@ void display(void)
 	mat4 modelToWorld = IdentityMatrix();
     glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
 	mat4 mirrorMatrix = Mult(T(7.5f, 1.5f, 6.0f), Ry(M_PI)); // place mirror
+	
 	// RENDER SCENE
 	glUseProgram(program);
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
@@ -648,7 +650,7 @@ void display(void)
 	glDepthMask(GL_FALSE);
 	
 	
-    glBindTexture(GL_TEXTURE_2D, tex1);
+    glBindTexture(GL_TEXTURE_2D, texWall);
     mat4 placeDowns = mat4(1.0);
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);
     glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
@@ -678,11 +680,21 @@ void display(void)
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
 
+	//test with adding more stuff into the mirror
+	mat4 reflectedHouse = reflectMatrix*houseMatrix;
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, reflectedHouse.m);
+
+    // furtniture
+    glBindTexture(GL_TEXTURE_2D, texCeiling);
+    DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
+
+	//test end
+
 	// ** Mirror in image
 	glDisable(GL_STENCIL_TEST);
 	glCullFace(GL_BACK); // Standard culling
 	
-	glBindTexture(GL_TEXTURE_2D, tex1);
+	glBindTexture(GL_TEXTURE_2D, texWall);
 	glUniform1f(glGetUniformLocation(program, "blend"), 0.25); // Blend value
 	placeDowns = mat4(1.0);
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);

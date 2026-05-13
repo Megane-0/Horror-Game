@@ -13,7 +13,7 @@ Camera::Camera()
 
     speed = 2.0f;
     cameraHeight = 1.8f;
-    cameraRadius = 0.35f;
+    cameraRadius = 0.25f;
 }
 void Camera::processMouse(float dx, float dy)
 {
