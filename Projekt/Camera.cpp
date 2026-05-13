@@ -32,6 +32,8 @@ void Camera::update(float deltaTime)
         sin(verticalAngle),
         cos(verticalAngle) * cos(horizontalAngle)
     );
+    
+    vec3 moveForward = normalize(vec3(forward.x, 0.0f, forward.z));
 
     right = vec3(
         sin(horizontalAngle - 3.14f / 2.0f),
@@ -45,10 +47,10 @@ void Camera::update(float deltaTime)
     float frameSpeed = speed * deltaTime;
 
     if (glutKeyIsDown('w'))
-        position = position + forward * frameSpeed;
+        position = position + moveForward * frameSpeed;
 
     if (glutKeyIsDown('s'))
-        position = position - forward * frameSpeed;
+        position = position - moveForward * frameSpeed;
 
     if (glutKeyIsDown('d'))
         position = position + right * frameSpeed;
