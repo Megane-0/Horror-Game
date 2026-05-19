@@ -10,6 +10,7 @@ public:
     void processMouse(float dx, float dy);
     mat4 getViewMatrix() const;
     vec3 getPosition() const;
+    vec3 getDirection() const;
     void setPosition(vec3 _position);
 
     const float sensitivity = 0.0025f;
@@ -20,6 +21,7 @@ private:
     float horizontalAngle;
     float verticalAngle;
     vec3 position;
+    vec3 direction;
     float speed;
     float mouseSpeed;
     float cameraHeight;

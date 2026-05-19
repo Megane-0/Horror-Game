@@ -26,8 +26,8 @@ void Camera::processMouse(float dx, float dy)
 
 void Camera::update(float deltaTime)
 {
-    // direction vector 
-    vec3 direction = vec3(
+    // direction vector
+    direction = vec3(
         cos(verticalAngle) * sin(horizontalAngle),
         sin(verticalAngle),
         cos(verticalAngle) * cos(horizontalAngle)
@@ -79,6 +79,11 @@ mat4 Camera::getViewMatrix() const
 vec3 Camera::getPosition() const
 {
     return position;
+}
+
+vec3 Camera::getDirection() const
+{
+    return direction;
 }
 void Camera::setPosition(vec3 _position)
 {

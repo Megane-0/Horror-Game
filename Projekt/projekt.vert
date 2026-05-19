@@ -6,6 +6,7 @@ in vec2 inTexCoord;
 
 out vec2 texCoord;
 out vec3 exNormal;
+out vec3 surf;
 
 uniform mat4 projMatrix;
 uniform mat4 modelMatrix;
@@ -16,10 +17,10 @@ void main(void)
 {
 	// Pass texture and normal to frag
 	texCoord = inTexCoord;
-	exNormal = inNormal;
+	exNormal = mat3(modelMatrix * placeDowns) * inNormal;
 
 	// Calculate transformations
 	gl_Position = projMatrix * viewMatrix * modelMatrix * placeDowns *vec4(inPosition, 1.0);
 	
-	//surf = inPosition; 
+	surf = vec3(modelMatrix * placeDowns * vec4(inPosition, 1.0));
 }
