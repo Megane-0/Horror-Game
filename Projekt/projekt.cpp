@@ -32,7 +32,7 @@ GLuint crossVAO = 0;
 GLuint crossVBO = 0;
 GLuint promptVAO = 0;
 GLuint promptVBO = 0;
-GLuint tex1, tex2, tex3;
+GLuint tex1, tex2, tex3, tex4; // tex4 for mirror
 GLuint texWall, texFloor, texDoor, texCeiling, texWindow; // House textures
 
 bool gPlayerDead = false;
@@ -56,6 +56,22 @@ std::vector<Door> doors;
 
 bool ghostCollisionTriggered = false;
 
+Model *mirrorModel;
+vec3 mirror[] = {
+	vec3(-1, -1,0),
+	vec3(-1, 1, 0),
+	vec3( 1, 1, 0),
+	vec3( 1, -1, 0)
+};
+vec2 mirrortex[] = {
+		vec2(-1,-1),
+		vec2(-1, 1),
+		vec2( 1, 1),
+		vec2( 1,-1)
+		};
+GLuint mirrorIndices[] = {0, 1, 2, 0, 2, 3};
+
+
 unsigned int max(float a, float b) {
 
 	if (a >= b) {
@@ -76,6 +92,169 @@ unsigned int min(float a, float b) {
 float vecLength(vec3 value)
 {
 	return sqrt(dot(value, value));
+}
+Model* GenerateTerrain(TextureData *tex)
+{
+	int vertexCount = tex->width * tex->height;
+	int triangleCount = (tex->width-1) * (tex->height-1) * 2;
+	int x, z;
+	
+	vertexArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
+	vec3 *normalArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
+	vec2 *texCoordArray = (vec2 *)malloc(sizeof(GLfloat) * 2 * vertexCount);
+	GLuint *indexArray = (GLuint *) malloc(sizeof(GLuint) * triangleCount*3);
+	
+	printf("bpp %d\n", tex->bpp);
+	for (x = 0; x < tex->width; x++)
+		for (z = 0; z < tex->height; z++)
+		{
+
+			vertexArray[(x + z * tex->width)].x = x / 5.0;
+			//vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
+			vertexArray[(x + z * tex->width)].y = 0.0f; // Flaten terrain
+			vertexArray[(x + z * tex->width)].z = z / 5.0;
+
+			// Texture coordinates. You may want to scale them.
+			texCoordArray[(x + z * tex->width)].x = x; // (float)x / tex->width;
+			texCoordArray[(x + z * tex->width)].y = z; // (float)z / tex->height;
+			
+			normalArray[(x + z * tex->width)] = vec3(0.0f, 1.0f, 0.0f); // uppåt-normals
+
+		}
+			
+	for (x = 0; x < tex->width; x++)
+			for (z = 0; z < tex->height; z++)
+			{
+			// Normal vectors. we need to calculate these.
+			vec3 vUp = vertexArray[(x + max((z-1), 0)* tex->width)];
+			vec3 vDown = vertexArray[(x + min((z+1), tex->height-1)* tex->width)];
+			vec3 vLeft = vertexArray[(max((x-1), 0) + z* tex->width)];
+			vec3 vRight = vertexArray[(min((x+1), tex->width-1) + z* tex->width)];
+			
+			vec3 vNorm = cross((vUp-vDown), (vRight-vLeft));
+
+			normalArray[(x + z * tex->width)] = vNorm;
+			//printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
+	}
+
+	
+	for (x = 0; x < tex->width-1; x++)
+		for (z = 0; z < tex->height-1; z++)
+		{
+			// Triangle 1
+			indexArray[(x + z * (tex->width-1))*6 + 0] = x + z * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 1] = x + (z+1) * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 2] = x+1 + z * tex->width;
+			// Triangle 2
+			indexArray[(x + z * (tex->width-1))*6 + 3] = x+1 + z * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 4] = x + (z+1) * tex->width;
+			indexArray[(x + z * (tex->width-1))*6 + 5] = x+1 + (z+1) * tex->width;
+
+		}
+	// End of terrain generation
+	
+	// Create Model and upload to GPU:
+
+	Model* model = LoadDataToModel(
+			vertexArray,
+			normalArray,
+			texCoordArray,
+			NULL,
+			indexArray,
+			vertexCount,
+			triangleCount*3);
+
+	return model;
+}
+
+
+void loadShader(){
+	program = loadShaders("projekt.vert", "projekt.frag");
+}
+void loadTextures(){
+	LoadTGATextureSimple("maskros512.tga", &tex1);
+	LoadTGATextureSimple("ghost_texture.tga", &tex3);
+	LoadTGATextureSimple("maskros512.tga", &tex4);
+	//LoadTGATextureSimple("44-terrain.tga", &tex2);
+	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
+	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
+	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texDoor); // TODO: Separate door texture
+	LoadTGATextureSimple("house-objects/house-textures/shatteredglass.tga", &texWindow);
+	
+	LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
+	LoadTGATextureData("fft-terrain.tga", &ttex);
+}
+void loadObjects(){
+	
+	mirrorModel = LoadDataToModel(
+			mirror,
+			NULL,
+			mirrortex,
+			NULL,
+			mirrorIndices,
+			4,
+			6);
+
+	tm = GenerateTerrain(&ttex);
+	modelWall= LoadModel("house-objects/walls.obj");
+	modelFloor = LoadModel("house-objects/floor.obj");
+	modelCeiling = LoadModel("house-objects/ceiling.obj");
+	modelFrames = LoadModel("house-objects/frames.obj");
+
+	modelWindow = LoadModel("house-objects/windowFixed.obj");
+
+	modelFurnitues = LoadModel("house-objects/furniture.obj");
+	
+
+	// Door 1: Main entrance
+    Door d1;
+    d1.model = LoadModel("house-objects/door_main_entrance.obj");
+    d1.pivot = vec3(-2.81285f, 1.0f, 5.54151f); 
+	//d1.pivot = vec3(-3.1285f, 1.0f, 5.56151f); 
+    d1.angle = 0.0f;
+    d1.targetAngle = 0.0f;
+    doors.push_back(d1);
+
+
+    Door d2;
+    d2.model = LoadModel("house-objects/door_2.obj");
+    d2.pivot = vec3(-2.7f, 1.0f, 2.66f);
+    d2.angle = 0.0f;
+    d2.targetAngle = 0.0f;
+    doors.push_back(d2);
+
+	Door d3;
+	d3.model = LoadModel("house-objects/door_3.obj");
+	d3.pivot = vec3(-4.5f, 1.0f, 2.76f);
+	d3.angle = 0.0f;
+	d3.targetAngle = 0.0f;
+	doors.push_back(d3);
+
+	Door d4;
+	d4.model = LoadModel("house-objects/door_4.obj");
+	d4.pivot = vec3(-6.46f, 1.0f, 2.76f);
+	d4.angle = 0.0f;
+	d4.targetAngle = 0.0f;
+	doors.push_back(d4);
+
+	Door d5;
+	d5.model = LoadModel("house-objects/door_5.obj");
+	d5.pivot = vec3(0.278f, 1.0f, -0.482103f);
+	d5.angle = 0.0f;
+	d5.targetAngle = 0.0f;
+	doors.push_back(d5);
+
+
+	// load ghost model
+	ghost = LoadModel("ghost.obj");
+
+
+}
+
+// helper for mirrors
+vec3 reflectVector(vec3 v, vec3 n)
+{
+    return v - 2.0f * dot(v, n) * n;
 }
 
 vec3 closestPointOnSegment(vec3 a, vec3 b, vec3 p)
@@ -183,93 +362,12 @@ bool modelCollision(Model* model, vec3 cam, float r, mat4 modelMatrix)
 
 	return false;
 }
-Model* GenerateTerrain(TextureData *tex)
-{
-	int vertexCount = tex->width * tex->height;
-	int triangleCount = (tex->width-1) * (tex->height-1) * 2;
-	int x, z;
-	
-	vertexArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
-	vec3 *normalArray = (vec3 *)malloc(sizeof(GLfloat) * 3 * vertexCount);
-	vec2 *texCoordArray = (vec2 *)malloc(sizeof(GLfloat) * 2 * vertexCount);
-	GLuint *indexArray = (GLuint *) malloc(sizeof(GLuint) * triangleCount*3);
-	
-	printf("bpp %d\n", tex->bpp);
-	for (x = 0; x < tex->width; x++)
-		for (z = 0; z < tex->height; z++)
-		{
-
-			vertexArray[(x + z * tex->width)].x = x / 5.0;
-			//vertexArray[(x + z * tex->width)].y = tex->imageData[(x + z * tex->width) * (tex->bpp/8)] / 10.0; // 10.0 for fft-terrain
-			vertexArray[(x + z * tex->width)].y = 0.0f; // Flaten terrain
-			vertexArray[(x + z * tex->width)].z = z / 5.0;
-
-			// Texture coordinates. You may want to scale them.
-			texCoordArray[(x + z * tex->width)].x = x; // (float)x / tex->width;
-			texCoordArray[(x + z * tex->width)].y = z; // (float)z / tex->height;
-			
-			normalArray[(x + z * tex->width)] = vec3(0.0f, 1.0f, 0.0f); // uppåt-normals
-
-		}
-			
-	for (x = 0; x < tex->width; x++)
-			for (z = 0; z < tex->height; z++)
-			{
-			// Normal vectors. we need to calculate these.
-			vec3 vUp = vertexArray[(x + max((z-1), 0)* tex->width)];
-			vec3 vDown = vertexArray[(x + min((z+1), tex->height-1)* tex->width)];
-			vec3 vLeft = vertexArray[(max((x-1), 0) + z* tex->width)];
-			vec3 vRight = vertexArray[(min((x+1), tex->width-1) + z* tex->width)];
-			
-			vec3 vNorm = cross((vUp-vDown), (vRight-vLeft));
-
-			normalArray[(x + z * tex->width)] = vNorm;
-			//printf("vec3(%.2f, %2f, %2f)\n", vNorm.x, vNorm.y,vNorm.z);
-	}
-
-	
-	for (x = 0; x < tex->width-1; x++)
-		for (z = 0; z < tex->height-1; z++)
-		{
-			// Triangle 1
-			indexArray[(x + z * (tex->width-1))*6 + 0] = x + z * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 1] = x + (z+1) * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 2] = x+1 + z * tex->width;
-			// Triangle 2
-			indexArray[(x + z * (tex->width-1))*6 + 3] = x+1 + z * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 4] = x + (z+1) * tex->width;
-			indexArray[(x + z * (tex->width-1))*6 + 5] = x+1 + (z+1) * tex->width;
-
-		}
-	// End of terrain generation
-	
-	// Create Model and upload to GPU:
-
-	Model* model = LoadDataToModel(
-			vertexArray,
-			normalArray,
-			texCoordArray,
-			NULL,
-			indexArray,
-			vertexCount,
-			triangleCount*3);
-
-	return model;
-}
-
 
 void init(void)
 {
-	// GL inits
-	glClearColor(0.4,0.6,0.9,0);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	printError("GL inits");
-	glutHideCursor();
 	projectionMatrix = frustum(-0.1, 0.1, -0.1, 0.1, 0.2, 5000.0);
 	glutWarpPointer(1024/2, 768/2);
 	// Load and compile shader
-	program = loadShaders("projekt.vert", "projekt.frag");
 	glUseProgram(program);
 	printError("init shader");
 	
@@ -278,156 +376,102 @@ void init(void)
 	// Upload light parameters
 	glUniform3fv(glGetUniformLocation(program, "lightPos"), 1, &lightPos.x);
 	glUniform3fv(glGetUniformLocation(program, "lightColor"), 1, &lightColor.x);
-	
-
-
-	LoadTGATextureSimple("maskros512.tga", &tex1);
-	LoadTGATextureSimple("ghost_texture.tga", &tex3);
-	//LoadTGATextureSimple("44-terrain.tga", &tex2);
-	LoadTGATextureSimple("house-objects/house-textures/wall_diffuse.tga", &texWall);
-	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texFloor);
-	LoadTGATextureSimple("house-objects/house-textures/floor_tiles.tga", &texDoor); // TODO: Separate door texture
-	LoadTGATextureSimple("house-objects/house-textures/shatteredglass.tga", &texWindow);
-	
-	LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex1);		// Bind Our Texture tex1
 	//glActiveTexture(GL_TEXTURE1);
 	//glBindTexture(GL_TEXTURE_2D, tex2);		// Bind Our Texture tex2
 
-	glUniform1i(glGetUniformLocation(program, "tex1"), 0); // Texture unit 0
-
 	// UI shader + attribute locations
-	crossProgram = loadShaders("ui.vert", "ui.frag");
-	GLint posLoc = glGetAttribLocation(crossProgram, "inPos");
-	GLint uvLoc = glGetAttribLocation(crossProgram, "inUV");
+    crossProgram = loadShaders("ui.vert", "ui.frag");
+    GLint posLoc = glGetAttribLocation(crossProgram, "inPos");
+    GLint uvLoc = glGetAttribLocation(crossProgram, "inUV");
 
-	// Crosshair geometry
-	float crossVerts[] = {
-		-0.02f,  0.0f,  0.02f,  0.0f,
-		0.0f, -0.02f,  0.0f,  0.02f
-	};
+    // Crosshair geometry
+    float crossVerts[] = {
+        -0.02f,  0.0f,  0.02f,  0.0f,
+        0.0f, -0.02f,  0.0f,  0.02f
+    };
 
-	glGenVertexArrays(1, &crossVAO);
-	glGenBuffers(1, &crossVBO);
+    glGenVertexArrays(1, &crossVAO);
+    glGenBuffers(1, &crossVBO);
 
-	glBindVertexArray(crossVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(crossVerts), crossVerts, GL_STATIC_DRAW);
+    glBindVertexArray(crossVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(crossVerts), crossVerts, GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(posLoc);
-	glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(posLoc);
+    glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 
-	glBindVertexArray(0);
+    glBindVertexArray(0);
 
-	// Door prompt geometry
-	float promptVerts[] = {
-		-0.12f, -0.10f,
-		0.12f, -0.10f,
-		0.12f, -0.06f,
-		-0.12f, -0.06f
-	};
+    // Door prompt geometry
+    float promptVerts[] = {
+        -0.12f, -0.10f,
+        0.12f, -0.10f,
+        0.12f, -0.06f,
+        -0.12f, -0.06f
+    };
 
-	glGenVertexArrays(1, &promptVAO);
-	glGenBuffers(1, &promptVBO);
+    glGenVertexArrays(1, &promptVAO);
+    glGenBuffers(1, &promptVBO);
 
-	glBindVertexArray(promptVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, promptVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(promptVerts), promptVerts, GL_STATIC_DRAW);
+    glBindVertexArray(promptVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, promptVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(promptVerts), promptVerts, GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(posLoc);
-	glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(posLoc);
+    glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 
-	glBindVertexArray(0);
+    glBindVertexArray(0);
 
-	// Death screen texture + fullscreen quad (pos + uv)
-	LoadTGATextureSimple("house-objects/house-textures/death.tga", &deathTex);
+    // Death screen texture + fullscreen quad (pos + uv)
+    LoadTGATextureSimple("house-objects/house-textures/death.tga", &deathTex);
 
-	float deathVerts[] = {
-		//  x,   y,   u,  v
-		-1.f, -1.f,  0.f, 0.f,
-		 1.f, -1.f,  1.f, 0.f,
-		 1.f,  1.f,  1.f, 1.f,
-		-1.f,  1.f,  0.f, 1.f
-	};
+    float deathVerts[] = {
+        //  x,   y,   u,  v
+        -1.f, -1.f,  0.f, 0.f,
+         1.f, -1.f,  1.f, 0.f,
+         1.f,  1.f,  1.f, 1.f,
+        -1.f,  1.f,  0.f, 1.f
+    };
 
-	glGenVertexArrays(1, &deathVAO);
-	glGenBuffers(1, &deathVBO);
+    glGenVertexArrays(1, &deathVAO);
+    glGenBuffers(1, &deathVBO);
 
-	glBindVertexArray(deathVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, deathVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(deathVerts), deathVerts, GL_STATIC_DRAW);
+    glBindVertexArray(deathVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, deathVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(deathVerts), deathVerts, GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(posLoc);
-	glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(posLoc);
+    glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 
-	glEnableVertexAttribArray(uvLoc);
-	glVertexAttribPointer(uvLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(uvLoc);
+    glVertexAttribPointer(uvLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-	glBindVertexArray(0);
+    glBindVertexArray(0);
 
 
-	modelWall= LoadModel("house-objects/walls.obj");
-	modelFloor = LoadModel("house-objects/floor.obj");
-	modelCeiling = LoadModel("house-objects/ceiling.obj");
-	modelFrames = LoadModel("house-objects/frames.obj");
-
-	modelWindow = LoadModel("house-objects/windowFixed.obj");
-
-	modelFurnitues = LoadModel("house-objects/furniture.obj");
+	glUniform1i(glGetUniformLocation(program, "tex1"), 0); // Texture unit 0
 	
-
-	// Door 1: Main entrance
-    Door d1;
-    d1.model = LoadModel("house-objects/door_main_entrance.obj");
-    d1.pivot = vec3(-2.81285f, 1.0f, 5.54151f); 
-	//d1.pivot = vec3(-3.1285f, 1.0f, 5.56151f); 
-    d1.angle = 0.0f;
-    d1.targetAngle = 0.0f;
-    doors.push_back(d1);
-
-
-    Door d2;
-    d2.model = LoadModel("house-objects/door_2.obj");
-    d2.pivot = vec3(-2.7f, 1.0f, 2.66f);
-    d2.angle = 0.0f;
-    d2.targetAngle = 0.0f;
-    doors.push_back(d2);
-
-	Door d3;
-	d3.model = LoadModel("house-objects/door_3.obj");
-	d3.pivot = vec3(-4.5f, 1.0f, 2.76f);
-	d3.angle = 0.0f;
-	d3.targetAngle = 0.0f;
-	doors.push_back(d3);
-
-	Door d4;
-	d4.model = LoadModel("house-objects/door_4.obj");
-	d4.pivot = vec3(-6.46f, 1.0f, 2.76f);
-	d4.angle = 0.0f;
-	d4.targetAngle = 0.0f;
-	doors.push_back(d4);
-
-	Door d5;
-	d5.model = LoadModel("house-objects/door_5.obj");
-	d5.pivot = vec3(0.278f, 1.0f, -0.482103f);
-	d5.angle = 0.0f;
-	d5.targetAngle = 0.0f;
-	doors.push_back(d5);
-
-
-	// load ghost model
-	ghost = LoadModel("ghost.obj");
-	
-	// Load terrain data
-	LoadTGATextureData("fft-terrain.tga", &ttex);
-	tm = GenerateTerrain(&ttex);
-	printError("init terrain");
-
-
 	// Set up ghost
 	std::vector<vec3> path = {
+		//corner room - start
+		{4.0f, 1.0f, 7.0f}, 
+    	{3.0f, 1.0f, 7.0f},
+      	{4.6f, 1.0f, 10.0f},
+		{5.04f, 1.80f, 11.25f},
+		//bed room
+		{5.09f, 1.83f, 14.65f}, 
+		{5.04f, 1.80f, 11.25f}, 
+		//Living room
+		{6.76f, 1.80f, 12.05f}, 
+		{6.59f, 1.80f, 6.10f},
+		{8.38f, 1.80f, 6.22f}, 
+		{8.38f, 1.80f, 12.00f},
+		
+		
+	    
 		//corner room - start
 		{4.0f, 1.0f, 7.0f}, 
     	{3.0f, 1.0f, 7.0f},
@@ -558,174 +602,255 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 }
 
 
-void display(void)
+void renderScene(mat4 viewMatrix, float deltaTime)
 {
-	// clear the screengit 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	
-	printError("pre display");
+    glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, viewMatrix.m);
+
+    mat4 modelToWorld = IdentityMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
 	
-	glUseProgram(program);
-	static float lastTime = 0;
-	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-	float deltaTime = currentTime - lastTime;
-	lastTime = currentTime;
-	vec3 lastCameraPosition = camera.getPosition();
-	camera.update(deltaTime);
+    // housee 
+    vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
+    housePos.y = getHeight(housePos.x, housePos.z);
+    mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, houseMatrix.m);
 
-	mat4 view = camera.getViewMatrix();
-	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+    // walls
+    glBindTexture(GL_TEXTURE_2D, texWall);
+    DrawModel(modelWall, program, "inPosition", "inNormal", "inTexCoord");
 
-	vec3 camPos = camera.getPosition();
-	float ghostDist = vecLength(camPos - gGhostPos);
-	float ghostIntensity = 1.0f - (ghostDist / 8.0f);
-	if (ghostIntensity < 0.0f) ghostIntensity = 0.0f;
-	if (ghostIntensity > 1.0f) ghostIntensity = 1.0f;
-	glUniform1f(glGetUniformLocation(program, "ghostIntensity"), ghostIntensity);
+    // frames
+    glBindTexture(GL_TEXTURE_2D, tex3);
+    DrawModel(modelFrames, program, "inPosition", "inNormal", "inTexCoord");
 
-	mat4 modelToWorld = IdentityMatrix();
-	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
+    // floor
+    glBindTexture(GL_TEXTURE_2D, texFloor);
+    DrawModel(modelFloor, program, "inPosition", "inNormal", "inTexCoord");
 
-	//--- House part ---//
+    // ceiling
+    glBindTexture(GL_TEXTURE_2D, texCeiling);
+    DrawModel(modelCeiling, program, "inPosition", "inNormal", "inTexCoord");
 
+    // windows
+    glBindTexture(GL_TEXTURE_2D, texWindow);
+    DrawModel(modelWindow, program, "inPosition", "inNormal", "inTexCoord");
 
-	 // House
-	vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
-	housePos.y = getHeight(housePos.x, housePos.z);
-	mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, houseMatrix.m);
+    // furniture
+    glBindTexture(GL_TEXTURE_2D, texCeiling);
+    DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
 
-
-	// walls
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texWall);
-	DrawModel(modelWall, program, "inPosition", "inNormal", "inTexCoord");
-
-	// frames
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex3);
-	DrawModel(modelFrames, program, "inPosition", "inNormal", "inTexCoord");
-
-	// floor
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texFloor);
-	DrawModel(modelFloor, program, "inPosition", "inNormal", "inTexCoord");
-
-	// ceiling
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texCeiling);
-	DrawModel(modelCeiling, program, "inPosition", "inNormal", "inTexCoord");
-
-	// windows	
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texWindow);
-	DrawModel(modelWindow, program, "inPosition", "inNormal", "inTexCoord");
-
-	//furniture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texCeiling);
-	DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
-
-
-	// door
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texDoor);
+    // doors
+    glBindTexture(GL_TEXTURE_2D, texDoor);
 
 
     for (int i = 0; i < doors.size(); i++) {
 
 		
         // (Animation)
-        if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
-        if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
-	    if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
+		for (int i = 0; i < doors.size(); i++)
+		{
+			// animation 
+			if (doors[i].angle < doors[i].targetAngle) doors[i].angle += doorSpeed * deltaTime;
+			if (doors[i].angle > doors[i].targetAngle) doors[i].angle -= doorSpeed * deltaTime;
+			if (fabs(doors[i].angle - doors[i].targetAngle) < 0.01f) doors[i].angle = doors[i].targetAngle;
 
-        // Calculate door matrix
-        mat4 doorMatrix = Mult(houseMatrix,
-            Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
-            Mult(Ry(doors[i].angle),
-                T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
+			mat4 doorMatrix = Mult(houseMatrix,
+				Mult(T(doors[i].pivot.x, doors[i].pivot.y, doors[i].pivot.z),
+				Mult(Ry(doors[i].angle),
+					T(-doors[i].pivot.x, -doors[i].pivot.y, -doors[i].pivot.z))));
 
-        // draw
-        glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
-        DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
-    }
-
-	handleCollision(houseMatrix, lastCameraPosition);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex3); // Temporarily set the ghost 
-
-	updateGhost(deltaTime); // Update the math
-
+			glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, doorMatrix.m);
+			DrawModel(doors[i].model, program, "inPosition", "inNormal", "inTexCoord");
+		}
+	}
+	// remove this comment to see ghost
+    // ghost
+	/*
+    glBindTexture(GL_TEXTURE_2D, tex3);
     mat4 ghostMatrix = getGhostMoveMatrix();
-    
     glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
     DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex1); // And now turn off ghost bind
+	*/
+	
+    // terrain
+    glBindTexture(GL_TEXTURE_2D, tex1);
+    mat4 placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
+    DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 	
 
-	mat4 placeDowns = mat4(1.0);
-	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
-	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
+}
+void display(void)
+{
+    static float lastTime = 0;
+    float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+    float deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
 
-	bool showDoorPrompt = false;
-	float bestDist = 9999.0f;
+    vec3 lastCameraPosition = camera.getPosition();
 
-	for (size_t i = 0; i < doors.size(); ++i)
-	{
-		vec3 doorWorldPos = MultVec3(houseMatrix, doors[i].pivot);
-		vec3 diff = camPos - doorWorldPos;
-		float dist = sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+    // update positions
+    camera.update(deltaTime);
+    updateGhost(deltaTime);
 
-		if (dist < bestDist) bestDist = dist;
-	}
+	float ghostDist = vecLength(camera.getPosition() - gGhostPos);
+    float ghostIntensity = 1.0f - (ghostDist / 8.0f);
+    if (ghostIntensity < 0.0f) ghostIntensity = 0.0f;
+    if (ghostIntensity > 1.0f) ghostIntensity = 1.0f;
+    glUniform1f(glGetUniformLocation(program, "ghostIntensity"), ghostIntensity);
+	printf("Ghost Intensity: %.2f\n", ghostIntensity);
 
-	showDoorPrompt = (bestDist < 2.5f); // justera radie
+    // collision
+    vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
+    housePos.y = getHeight(housePos.x, housePos.z);
+    mat4 houseMatrix = T(housePos.x, housePos.y + 0.5f, housePos.z);
 
-	glDisable(GL_DEPTH_TEST);
-	if (showDoorPrompt)
-	{
-		glUseProgram(crossProgram);
-		glUniform3f(glGetUniformLocation(crossProgram, "crossColor"), 1.0f, 0.8f, 0.2f);
-
-		glBindVertexArray(promptVAO);
-		glDrawArrays(GL_LINE_LOOP, 0, 4);
-		glBindVertexArray(0);
-	}
-
-	glUseProgram(crossProgram);
-	glUniform3f(glGetUniformLocation(crossProgram, "crossColor"), 1.0f, 1.0f, 1.0f);
-
-	glBindVertexArray(crossVAO);
-	glDrawArrays(GL_LINES, 0, 4);
-	glBindVertexArray(0);
-
-	glEnable(GL_DEPTH_TEST);
-
-	if (gPlayerDead){
-		glDisable(GL_DEPTH_TEST);
-		glUseProgram(crossProgram);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, deathTex);
-		glUniform1i(glGetUniformLocation(crossProgram, "uiTex"), 0);
-		glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 1);
-
-		glBindVertexArray(deathVAO);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-		glBindVertexArray(0);
-
-		glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 0);
-		glEnable(GL_DEPTH_TEST);
-	}
-
-	printError("display 2");
+    handleCollision(houseMatrix, lastCameraPosition);
+    mat4 view = camera.getViewMatrix();
+    
+	//Upload modelmatrix not used for ghost and terrain
+	mat4 modelToWorld = IdentityMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
+	mat4 mirrorMatrix = Mult(T(7.5f, 1.5f, 6.0f), Ry(M_PI)); // place mirror
 	
-	glutSwapBuffers();
+	// RENDER SCENE
+	glUseProgram(program);
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
+	glUniformMatrix4fv(glGetUniformLocation(program, "projMatrix"), 1, GL_TRUE, projectionMatrix.m);
+	
+	// Algorithm:
+	// 1. Clear the stencil buffer
+	// 2. Draw the ground ONLY in stencil
+	// 3. Draw the mirrored teapot (behind the ground), masked by stencil buffer
+	// 4. Draw the ground with some transparency, to make the mirrored geometry visible
+	// 5. Draw the teapot in a position matching the mirrored one
+	
+	glClearColor(0,0.1,0.3,1.0f); // Not black - we want to see if the mirrored image is drawn outside the plane!
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear Screen, Depth Buffer and Stencil Buffer
+	glClearStencil(2); // No, stencil must be set to 2 outside the plane or it will draw double shadows there!
+	
+	// ** Mirror in stencil
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_ALWAYS, 1, 0xFFFFFFFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Write 1 if pass! Otherwise keep! Don't draw in invisible areas.
+
+	// Turn off Color Buffer and Depth Buffer
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthMask(GL_FALSE);
+	
+	
+    glBindTexture(GL_TEXTURE_2D, texWall);
+    mat4 placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);
+    glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+	DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
+
+
+	// ** Ghost mirrored - with stencil!
+
+	// Turn on Color Buffer and Depth Buffer
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDepthMask(GL_TRUE);
+	
+	glEnable(GL_STENCIL_TEST); // Try disabling this!
+	glStencilFunc(GL_EQUAL, 1, 0xFFFFFFFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_INCR); // Skriv 1 om pass! Annars keep! Vi vill inte rita i osynlig yta!
+	glCullFace(GL_FRONT); // Since the teapot is mirrored, culling must be reversed
+
+	mat4 reflectMatrix =
+    T(7.5f, 1.5f, 6.0f) *Ry(M_PI) *S(1.0f, 1.0f, -1.0f) *Ry(-M_PI) *T(-7.5f, -1.5f, -6.0f);
+
+	mat4 ghostMatrix = reflectMatrix * getGhostMoveMatrix();
+	glBindTexture(GL_TEXTURE_2D, tex3);
+	
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, ghostMatrix.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "projMatrix"), 1, GL_TRUE, projectionMatrix.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
+	DrawModel(ghost, program, "inPosition", "inNormal", "inTexCoord");
+
+	//test with adding more stuff into the mirror
+	mat4 reflectedHouse = reflectMatrix*houseMatrix;
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, reflectedHouse.m);
+
+    // furtniture
+    glBindTexture(GL_TEXTURE_2D, texCeiling);
+    DrawModel(modelFurnitues, program, "inPosition", "inNormal", "inTexCoord");
+
+	//test end
+
+	// ** Mirror in image
+	glDisable(GL_STENCIL_TEST);
+	glCullFace(GL_BACK); // Standard culling
+	
+	glBindTexture(GL_TEXTURE_2D, texWall);
+	glUniform1f(glGetUniformLocation(program, "blend"), 0.25); // Blend value
+	placeDowns = mat4(1.0);
+    glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, mirrorMatrix.m);
+	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+    DrawModel(mirrorModel, program, "inPosition", "inNormal", "inTexCoord");
+
+	
+	glDisable(GL_STENCIL_TEST);
+	// Rest of the scene drawn normally
+	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
+	renderScene(view, deltaTime);
+    bool showDoorPrompt = false;
+    float bestDist = 9999.0f;
+
+    for (size_t i = 0; i < doors.size(); ++i)
+    {
+        vec3 doorWorldPos = MultVec3(houseMatrix, doors[i].pivot);
+        vec3 diff = camPos - doorWorldPos;
+        float dist = sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+
+        if (dist < bestDist) bestDist = dist;
+    }
+
+    showDoorPrompt = (bestDist < 2.5f); // justera radie
+
+    glDisable(GL_DEPTH_TEST);
+    if (showDoorPrompt)
+    {
+        glUseProgram(crossProgram);
+        glUniform3f(glGetUniformLocation(crossProgram, "crossColor"), 1.0f, 0.8f, 0.2f);
+
+        glBindVertexArray(promptVAO);
+        glDrawArrays(GL_LINE_LOOP, 0, 4);
+        glBindVertexArray(0);
+    }
+
+    glUseProgram(crossProgram);
+    glUniform3f(glGetUniformLocation(crossProgram, "crossColor"), 1.0f, 1.0f, 1.0f);
+
+    glBindVertexArray(crossVAO);
+    glDrawArrays(GL_LINES, 0, 4);
+    glBindVertexArray(0);
+
+    glEnable(GL_DEPTH_TEST);
+
+    if (gPlayerDead){
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(crossProgram);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, deathTex);
+        glUniform1i(glGetUniformLocation(crossProgram, "uiTex"), 0);
+        glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 1);
+
+        glBindVertexArray(deathVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        glBindVertexArray(0);
+
+        glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 0);
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    printError("display 2");
+    
+    glutSwapBuffers();
+	
 }
 
 void mouse(int x, int y)
@@ -784,26 +909,50 @@ void mouseClick(int button, int state, int x, int y){
                 doors[closestDoorIdx].targetAngle = 0.0f;
             
         }
+		vec3 pos = camera.getPosition();
+		printf("vec3(%2f, %2f, %2f)\n", pos.x, pos.y,pos.z);
 
-		
     }
+
+}
+
+void processNormalKeys(unsigned char key, int x, int y)
+{
+	if (key == 27) 
+		exit(0);
 }
 
 int main(int argc, char **argv)
 {
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL);
 	glutInitContextVersion(3, 2);
 	glutInitWindowSize (1024, 768);
 
-	glutCreateWindow ("TSBK07 Lab 4");
+	glutCreateWindow ("TSBK07 PROJEKT");
+	
+	// Load shaders, textures and objects
+	loadShader();
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	loadTextures();
+	loadObjects();
+
+	glEnable(GL_DEPTH_TEST);
+	glClearColor(0.4,0.6,0.9,0);
+	glEnable(GL_CULL_FACE);
+
 	//glutFullScreen();
-	glutDisplayFunc(display);
 	init ();
-	glutRepeatingTimer(30);
+	glutDisplayFunc(display);
+	
+	glutHideCursor();
+	glutRepeatingTimer(20);
 	
 	glutPassiveMotionFunc(mouse);
 	glutMouseFunc(mouseClick);
+	glutKeyboardFunc(processNormalKeys);
+
 	glutMainLoop();
 	exit(0);
 }

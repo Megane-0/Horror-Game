@@ -13,7 +13,7 @@ Camera::Camera()
 
     speed = 1.5f;
     cameraHeight = 1.8f;
-    cameraRadius = 0.35f;
+    cameraRadius = 0.25f;
 }
 void Camera::processMouse(float dx, float dy)
 {
@@ -27,28 +27,30 @@ void Camera::processMouse(float dx, float dy)
 void Camera::update(float deltaTime)
 {
     // direction vector 
-    vec3 direction = vec3(
+    forward = vec3(
         cos(verticalAngle) * sin(horizontalAngle),
         sin(verticalAngle),
         cos(verticalAngle) * cos(horizontalAngle)
     );
+    
+    vec3 moveForward = normalize(vec3(forward.x, 0.0f, forward.z));
 
-    vec3 right = vec3(
+    right = vec3(
         sin(horizontalAngle - 3.14f / 2.0f),
         0,
         cos(horizontalAngle - 3.14f / 2.0f)
     );
 
-    vec3 up = cross(right, direction);
+    up = cross(right, forward);
 
     //  movement 
     float frameSpeed = speed * deltaTime;
 
     if (glutKeyIsDown('w'))
-        position = position + direction * frameSpeed;
+        position = position + moveForward * frameSpeed;
 
     if (glutKeyIsDown('s'))
-        position = position - direction * frameSpeed;
+        position = position - moveForward * frameSpeed;
 
     if (glutKeyIsDown('d'))
         position = position + right * frameSpeed;
@@ -62,7 +64,7 @@ void Camera::update(float deltaTime)
         position.y = terrainHeight + cameraHeight;
 
     //  view matrix 
-    vec3 target = position + direction;
+    vec3 target = position + forward;
 
     viewMatrix = lookAt(
         position.x, position.y, position.z,
@@ -84,3 +86,6 @@ void Camera::setPosition(vec3 _position)
 {
    position = _position;
 }
+vec3 Camera::getForward() const { return forward; }
+vec3 Camera::getRight() const { return right; }
+vec3 Camera::getUp() const { return up; }
