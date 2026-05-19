@@ -12,6 +12,7 @@ in vec3 fragPos;
 
 uniform vec3 lightPos;
 uniform vec3 lightColor;
+uniform float ghostIntensity;
 // attenuation constants
 const float lightConstant = 1.0;
 const float lightLinear = 0.09;
@@ -40,5 +41,7 @@ void main(void)
 
 	vec3 lighting = (ambientStrength * texColor) + (texColor * diff * lightColor * attenuation);
 
-	outColor = vec4(lighting, 1.0);
+	vec3 ghostTint = vec3(1, 0, 0);
+	vec3 finalColor = mix(lighting, ghostTint, ghostIntensity * 0.25);
+	outColor = vec4(finalColor, 1.0);
 }

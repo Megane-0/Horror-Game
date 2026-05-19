@@ -27,8 +27,20 @@ Model *m, *m2, *tm, *sphere, *ghost;
 Model *house, *modelWall, *modelFloor, *modelCeiling, *modelFrames, *modelDoor, *modelWindow, *modelFurnitues;
 // Reference to shader program
 GLuint program;
+GLuint crossProgram = 0;
+GLuint crossVAO = 0;
+GLuint crossVBO = 0;
+GLuint promptVAO = 0;
+GLuint promptVBO = 0;
 GLuint tex1, tex2, tex3;
 GLuint texWall, texFloor, texDoor, texCeiling, texWindow; // House textures
+
+bool gPlayerDead = false;
+
+GLuint deathTex = 0;
+GLuint deathVAO = 0;
+GLuint deathVBO = 0;
+
 TextureData ttex; // terrain
 vec3 *vertexArray;
 Camera camera;
@@ -285,8 +297,75 @@ void init(void)
 	//glBindTexture(GL_TEXTURE_2D, tex2);		// Bind Our Texture tex2
 
 	glUniform1i(glGetUniformLocation(program, "tex1"), 0); // Texture unit 0
-	
 
+	// UI shader + attribute locations
+	crossProgram = loadShaders("ui.vert", "ui.frag");
+	GLint posLoc = glGetAttribLocation(crossProgram, "inPos");
+	GLint uvLoc = glGetAttribLocation(crossProgram, "inUV");
+
+	// Crosshair geometry
+	float crossVerts[] = {
+		-0.02f,  0.0f,  0.02f,  0.0f,
+		0.0f, -0.02f,  0.0f,  0.02f
+	};
+
+	glGenVertexArrays(1, &crossVAO);
+	glGenBuffers(1, &crossVBO);
+
+	glBindVertexArray(crossVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, crossVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(crossVerts), crossVerts, GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(posLoc);
+	glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+
+	glBindVertexArray(0);
+
+	// Door prompt geometry
+	float promptVerts[] = {
+		-0.12f, -0.10f,
+		0.12f, -0.10f,
+		0.12f, -0.06f,
+		-0.12f, -0.06f
+	};
+
+	glGenVertexArrays(1, &promptVAO);
+	glGenBuffers(1, &promptVBO);
+
+	glBindVertexArray(promptVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, promptVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(promptVerts), promptVerts, GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(posLoc);
+	glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+
+	glBindVertexArray(0);
+
+	// Death screen texture + fullscreen quad (pos + uv)
+	LoadTGATextureSimple("house-objects/house-textures/death.tga", &deathTex);
+
+	float deathVerts[] = {
+		//  x,   y,   u,  v
+		-1.f, -1.f,  0.f, 0.f,
+		 1.f, -1.f,  1.f, 0.f,
+		 1.f,  1.f,  1.f, 1.f,
+		-1.f,  1.f,  0.f, 1.f
+	};
+
+	glGenVertexArrays(1, &deathVAO);
+	glGenBuffers(1, &deathVBO);
+
+	glBindVertexArray(deathVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, deathVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(deathVerts), deathVerts, GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(posLoc);
+	glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+	glEnableVertexAttribArray(uvLoc);
+	glVertexAttribPointer(uvLoc, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	glBindVertexArray(0);
 
 
 	modelWall= LoadModel("house-objects/walls.obj");
@@ -429,6 +508,7 @@ float getHeight(float x, float z) {
 void onGhostCollision() {
 	camera.setPosition(vec3(7.0f, 1.0f, 18.0f)); 
 	printf("The ghost has collided with you!\n");
+	gPlayerDead = true;
 }
 void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 {
@@ -436,7 +516,7 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 	vec3 cam = camera.getPosition();
 	vec3 enemy = gGhostPos;
 
-	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.5f))
+	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.0f))
 	{
 		if (!ghostCollisionTriggered)
         {
@@ -496,6 +576,13 @@ void display(void)
 
 	mat4 view = camera.getViewMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "viewMatrix"), 1, GL_TRUE, view.m);
+
+	vec3 camPos = camera.getPosition();
+	float ghostDist = vecLength(camPos - gGhostPos);
+	float ghostIntensity = 1.0f - (ghostDist / 8.0f);
+	if (ghostIntensity < 0.0f) ghostIntensity = 0.0f;
+	if (ghostIntensity > 1.0f) ghostIntensity = 1.0f;
+	glUniform1f(glGetUniformLocation(program, "ghostIntensity"), ghostIntensity);
 
 	mat4 modelToWorld = IdentityMatrix();
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_TRUE, modelToWorld.m);
@@ -585,6 +672,56 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(program, "placeDowns"), 1, GL_TRUE, placeDowns.m);
 	DrawModel(tm, program, "inPosition", "inNormal", "inTexCoord");
 
+	bool showDoorPrompt = false;
+	float bestDist = 9999.0f;
+
+	for (size_t i = 0; i < doors.size(); ++i)
+	{
+		vec3 doorWorldPos = MultVec3(houseMatrix, doors[i].pivot);
+		vec3 diff = camPos - doorWorldPos;
+		float dist = sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+
+		if (dist < bestDist) bestDist = dist;
+	}
+
+	showDoorPrompt = (bestDist < 2.5f); // justera radie
+
+	glDisable(GL_DEPTH_TEST);
+	if (showDoorPrompt)
+	{
+		glUseProgram(crossProgram);
+		glUniform3f(glGetUniformLocation(crossProgram, "crossColor"), 1.0f, 0.8f, 0.2f);
+
+		glBindVertexArray(promptVAO);
+		glDrawArrays(GL_LINE_LOOP, 0, 4);
+		glBindVertexArray(0);
+	}
+
+	glUseProgram(crossProgram);
+	glUniform3f(glGetUniformLocation(crossProgram, "crossColor"), 1.0f, 1.0f, 1.0f);
+
+	glBindVertexArray(crossVAO);
+	glDrawArrays(GL_LINES, 0, 4);
+	glBindVertexArray(0);
+
+	glEnable(GL_DEPTH_TEST);
+
+	if (gPlayerDead){
+		glDisable(GL_DEPTH_TEST);
+		glUseProgram(crossProgram);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, deathTex);
+		glUniform1i(glGetUniformLocation(crossProgram, "uiTex"), 0);
+		glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 1);
+
+		glBindVertexArray(deathVAO);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+		glBindVertexArray(0);
+
+		glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 0);
+		glEnable(GL_DEPTH_TEST);
+	}
 
 	printError("display 2");
 	
@@ -628,7 +765,7 @@ void mouseClick(int button, int state, int x, int y){
             float dist = sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 
             // Only consider doors within reasonable range
-            if (dist < 15.0f && dist < closestDist)
+			if (dist < 5.0f && dist < closestDist)
             {
                 closestDist = dist;
                 closestDoorIdx = (int)i;
@@ -637,16 +774,18 @@ void mouseClick(int button, int state, int x, int y){
         }
 
         // Toggle only the closest door
-        if (closestDoorIdx >= 0)
+		// i mouseClick:
+		if (closestDoorIdx >= 0)
         {
-            if (fabs(doors[closestDoorIdx].angle - doors[closestDoorIdx].targetAngle) < 0.01f)
-            {
-                if (doors[closestDoorIdx].targetAngle < 0.1f)
-                    doors[closestDoorIdx].targetAngle = 1.5f;
-                else
-                    doors[closestDoorIdx].targetAngle = 0.0f;
-            }
+    
+            if (doors[closestDoorIdx].angle < 0.1f)
+                doors[closestDoorIdx].targetAngle = 1.5f;
+            else
+                doors[closestDoorIdx].targetAngle = 0.0f;
+            
         }
+
+		
     }
 }
 
@@ -661,7 +800,7 @@ int main(int argc, char **argv)
 	//glutFullScreen();
 	glutDisplayFunc(display);
 	init ();
-	glutRepeatingTimer(100);
+	glutRepeatingTimer(30);
 	
 	glutPassiveMotionFunc(mouse);
 	glutMouseFunc(mouseClick);
