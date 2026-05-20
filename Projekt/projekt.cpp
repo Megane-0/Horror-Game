@@ -36,8 +36,12 @@ GLuint tex1, tex2, tex3, tex4; // tex4 for mirror
 GLuint texWall, texFloor, texDoor, texCeiling, texWindow; // House textures
 
 bool gPlayerDead = false;
+bool gPlayerWon = false;
+
+std::vector<vec3> gGhostPath;
 
 GLuint deathTex = 0;
+GLuint winTex = 0;
 GLuint deathVAO = 0;
 GLuint deathVBO = 0;
 
@@ -183,6 +187,10 @@ void loadTextures(){
 	
 	LoadTGATextureSimple("house-objects/house-textures/ceiling.tga", &texCeiling);
 	LoadTGATextureData("fft-terrain.tga", &ttex);
+	LoadTGATextureSimple("house-objects/house-textures/death.tga", &deathTex);
+	LoadTGATextureSimple("house-objects/house-textures/win_screen.tga", &winTex);
+
+
 }
 void loadObjects(){
 	
@@ -426,8 +434,7 @@ void init(void)
     glBindVertexArray(0);
 
     // Death screen texture + fullscreen quad (pos + uv)
-    LoadTGATextureSimple("house-objects/house-textures/death.tga", &deathTex);
-
+    
     float deathVerts[] = {
         //  x,   y,   u,  v
         -1.f, -1.f,  0.f, 0.f,
@@ -455,7 +462,7 @@ void init(void)
 	glUniform1i(glGetUniformLocation(program, "tex1"), 0); // Texture unit 0
 	
 	// Set up ghost
-	std::vector<vec3> path = {
+	gGhostPath = {
 		//corner room - start
 		{4.0f, 1.0f, 7.0f}, 
     	{3.0f, 1.0f, 7.0f},
@@ -488,12 +495,28 @@ void init(void)
 		
 		
 	    
-    };
+	    };
     
-    // Set up the ghost: Start Pos, Speed, Path
-    initGhost(vec3(4, 1, 7), 1.0f, path);
+	// Set up the ghost: Start Pos, Speed, Path
+	initGhost(vec3(4, 1, 7), 1.0f, gGhostPath);
     gGhostYawOffset = -M_PI/2.0; // Tweak this if the model faces the wrong way
 
+}
+
+void resetGame()
+{
+	gPlayerDead = false;
+	gPlayerWon = false;
+	ghostCollisionTriggered = false;
+
+	camera.setPosition(vec3(12.18f, 1.80f, 9.05f));
+	initGhost(vec3(4, 1, 7), 1.0f, gGhostPath);
+
+	for (size_t i = 0; i < doors.size(); ++i)
+	{
+		doors[i].angle = 0.0f;
+		doors[i].targetAngle = 0.0f;
+	}
 }
 
 float getLength(vec2 p1, vec2 p2){
@@ -551,7 +574,7 @@ float getHeight(float x, float z) {
 }
 void onGhostCollision() {
 	camera.setPosition(vec3(7.0f, 1.0f, 18.0f)); 
-	printf("The ghost has collided with you!\n");
+	
 	gPlayerDead = true;
 }
 void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
@@ -559,6 +582,7 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 	bool colliding = false;
 	vec3 cam = camera.getPosition();
 	vec3 enemy = gGhostPos;
+	vec3 outsidePos = vec3(6.74, 1.80, 16.34);
 
 	if (sphereCollision(cam, camera.cameraRadius, enemy, 1.0f))
 	{
@@ -567,7 +591,10 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
             onGhostCollision();
             ghostCollisionTriggered = true;
         }
-        //colliding = true;
+	}
+	if (sphereCollision(cam, camera.cameraRadius, outsidePos, 1.0f))
+	{
+		gPlayerWon = true;
 	}
 
 	else
@@ -590,7 +617,6 @@ void handleCollision(mat4 houseMatrix, vec3 lastCameraPosition)
 
         if (modelCollision(doors[i].model, cam, camera.cameraRadius, doorMatrix))
         {
-            printf("Door Collision!\n");
             colliding = true;
         }
     }
@@ -698,8 +724,6 @@ void display(void)
     float ghostIntensity = 1.0f - (ghostDist / 8.0f);
     if (ghostIntensity < 0.0f) ghostIntensity = 0.0f;
     if (ghostIntensity > 1.0f) ghostIntensity = 1.0f;
-    glUniform1f(glGetUniformLocation(program, "ghostIntensity"), ghostIntensity);
-	printf("Ghost Intensity: %.2f\n", ghostIntensity);
 
     // collision
     vec3 housePos = vec3(10.0f, 0.0f, 10.0f);
@@ -716,6 +740,8 @@ void display(void)
 	
 	// RENDER SCENE
 	glUseProgram(program);
+	glUniform1f(glGetUniformLocation(program, "ghostIntensity"), ghostIntensity);
+
 	glUniform1f(glGetUniformLocation(program, "blend"), 1.0); // Blend value
 	glUniformMatrix4fv(glGetUniformLocation(program, "projMatrix"), 1, GL_TRUE, projectionMatrix.m);
 	
@@ -846,6 +872,22 @@ void display(void)
         glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 0);
         glEnable(GL_DEPTH_TEST);
     }
+	else if (gPlayerWon){
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(crossProgram);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, winTex);
+        glUniform1i(glGetUniformLocation(crossProgram, "uiTex"), 0);
+        glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 1);
+
+        glBindVertexArray(deathVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        glBindVertexArray(0);
+
+        glUniform1i(glGetUniformLocation(crossProgram, "useTexture"), 0);
+        glEnable(GL_DEPTH_TEST);
+    }
 
     printError("display 2");
     
@@ -902,7 +944,6 @@ void mouseClick(int button, int state, int x, int y){
 		// i mouseClick:
 		if (closestDoorIdx >= 0)
         {
-    
             if (doors[closestDoorIdx].angle < 0.1f)
                 doors[closestDoorIdx].targetAngle = 1.5f;
             else
@@ -910,14 +951,23 @@ void mouseClick(int button, int state, int x, int y){
             
         }
 		vec3 pos = camera.getPosition();
-		printf("vec3(%2f, %2f, %2f)\n", pos.x, pos.y,pos.z);
+		//printf("vec3(%2f, %2f, %2f)\n", pos.x, pos.y,pos.z);
 
     }
-
+	
 }
 
 void processNormalKeys(unsigned char key, int x, int y)
 {
+	if (key == '\r' || key == '\n')
+	{
+		if (gPlayerDead || gPlayerWon)
+		{
+			resetGame();
+			return;
+		}
+	}
+
 	if (key == 27) 
 		exit(0);
 }
