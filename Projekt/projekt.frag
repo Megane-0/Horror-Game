@@ -20,7 +20,6 @@ const float lightStr = 100;
 
 
 
-// Slightly broken
 float getSpecular(vec3 lightDirection, vec3 normal, vec3 eyeDirection) {
 	vec3 reflectedLightDirection = reflect(-lightDirection, exNormal);
 
@@ -38,11 +37,35 @@ float getSpecular(vec3 lightDirection, vec3 normal, vec3 eyeDirection) {
 }
 
 
+
+
+float getAttenuationVal(float light, float dist) {
+
+	float a = 0.0075;
+	float b = 0.005;
+	float c = 0.000125;
+
+	return 1/(a + b*dist + c*pow(dist, 2));
+	
+}
+
+
+in vec3 fragPos;
+
+uniform vec3 lightPos;
+uniform vec3 lightColor;
+uniform float ghostIntensity;
+uniform float blend;
+// attenuation constants
+const float lightConstant = 1.0;
+const float lightLinear = 0.09;
+const float lightQuadratic = 0.032;
+
 void main(void)
 {
 	// Get texture pixel
-	vec3 texColor = vec3(0, 0, 0);
-	texColor = texture(tex1, texCoord).rgb;
+	vec3 texColor = texture(tex1, texCoord).rgb;
+
 
 	// Phong diffuse
 	vec3 light = normalize(-cameraDir);
@@ -55,20 +78,33 @@ void main(void)
 
 	// Flashlight cone check: angle between (camera→surface) and camera look direction
 	float ambient = 0.2;	
-	vec3 finalColor;
+	vec3 finalLighting;
 
 	float cosAngle = dot(normalize(cameraPos - surf), light);
 
 	if (cosAngle > flashlightCos) {
-		finalColor = texColor * ((diff+spec)*(cosAngle-flashlightCos)*lightStr + ambient); 
-		//finalColor = texColor * (spec+ambient+diff); // For testing
+		float dist = length(surf-cameraPos);
+		float finalStr = (diff+spec)*(cosAngle-flashlightCos)*getAttenuationVal(lightStr, dist) + ambient;
+
+		finalLighting = texColor*finalStr;
+
+		//finalLighting = texColor * ((diff+spec)*(cosAngle-flashlightCos)*lightStr + ambient); 
+
 	} else {
-		finalColor = texColor * ambient;
+		finalLighting = texColor * ambient;
 	}
     
 	// Finally, add the color
-    outColor = vec4(finalColor, 1.0);
+
+
+	vec3 ghostTint = vec3(1, 0, 0);
+	vec3 finalColor = mix(finalLighting, ghostTint, ghostIntensity * 0.25);
+	outColor = vec4(finalColor, 1.0);
+	outColor.a = blend;
+
 }
+
+
 
 
 

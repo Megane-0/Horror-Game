@@ -64,5 +64,5 @@ void updateGhost(float deltaTime) {
 
 mat4 getGhostMoveMatrix() {
     // Get a matrix that is also translated and rotated
-    return T(gGhostPos.x, gGhostPos.y, gGhostPos.z) * Ry(gGhostYaw);
+    return T(gGhostPos.x, gGhostPos.y, gGhostPos.z) * Ry(gGhostYaw) * S(0.7f, 0.7f, 0.7f);;
 }
